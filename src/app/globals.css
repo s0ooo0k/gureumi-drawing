@@ -1,0 +1,66 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600;700&display=swap");
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Pretendard";
+  src: url("/fonts/Pretendard-Regular.woff") format("woff");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: "Pretendard";
+  src: url("/fonts/Pretendard-SemiBold.woff") format("woff");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 600;
+}
+
+:root {
+  --paper: #f7f7f5;
+  --ink: #111111;
+  --muted: #6f737a;
+  --surface: #eef1f4;
+  --ice: #eaf3ff;
+  --night: #0b0d10;
+  --lime: #b7f500;
+  --blue: #b9d8ff;
+  --line: color-mix(in srgb, var(--ink) 16%, transparent);
+  --page: min(1280px, calc(100vw - 96px));
+  --font-inter: "Inter";
+  --font-unbounded: "Unbounded";
+  --font-latin: var(--font-inter), Pretendard, "Pretendard Variable", SUIT, "Noto Sans KR", system-ui, sans-serif;
+  --font-korean: Pretendard, "Pretendard Variable", SUIT, "Noto Sans KR", system-ui, sans-serif;
+
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--paper);
+}
+
+body {
+  margin: 0;
+  overflow-x: clip;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-latin);
+  font-size: 16px;
+  line-height: 1.6;
+  text-rendering: optimizeLegibility;
+  word-break: keep-all;
+}
+
+a { color: inherit; text-decoration: none; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button, input, textarea { font: inherit; }
+img { display: block; max-width: 100%; height: auto; }
+::selection { background: var(--lime); color: var(--ink); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+}
