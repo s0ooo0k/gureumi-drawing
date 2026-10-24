@@ -185,6 +185,21 @@ function SketchbookDecor() {
       <path d="m61 65 12-12-15 30 30-32-28 44 39-36-26 42 32-29-17 29" strokeWidth="5"/>
       <path d="m76 31-4-21m32 29 13-22m6 40 25-9m-20 34 23 4m-37 20 15 18m-40-6 4 28m-30-32-12 24m-1-47-24 11m21-34L8 67m36-17L26 30" strokeWidth="5"/>
     </g></svg>
+    <svg className={styles.doodleRainbow} viewBox="0 0 180 120" fill="none"><g filter="url(#crayon-edge)" strokeLinecap="round">
+      <path d="M20 94C22 1 151 2 159 94" stroke="#f0919e" strokeWidth="9"/>
+      <path d="M34 94C38 22 139 23 145 94" stroke="#f4c64f" strokeWidth="8"/>
+      <path d="M48 94C54 43 124 43 131 94" stroke="#63aa79" strokeWidth="8"/>
+      <path d="M62 94C67 62 111 61 117 94" stroke="#6da2d8" strokeWidth="7"/>
+      <path d="M8 102c-10-13 4-23 15-18 4-14 24-13 28 2 18-4 26 18 9 22-18 4-37 1-52-6Zm114 3c-11-14 1-25 14-20 5-15 23-14 29 0 15-3 22 18 6 23-17 4-34 2-49-3Z" stroke="#75a5bd" strokeWidth="3" fill="#fff"/>
+    </g></svg>
+    <svg className={styles.doodleHearts} viewBox="0 0 100 160" fill="none"><g filter="url(#crayon-edge)" stroke="#d57e98" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M49 67C-5 37 14 7 37 26 52-2 85 22 49 67Zm-22-31 9 10-6-15 16 25-5-22 12 14 6-17M65 139c-31-20-21-38-7-26 13-19 32-1 7 26Z"/>
+    </g></svg>
+    <svg className={styles.doodleButterfly} viewBox="0 0 150 120" fill="none"><g filter="url(#crayon-edge)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M75 54C4-16-1 85 61 73 4 114 85 137 75 54Zm5 4c59-67 87 11 17 18 56 18-7 65-17-18Z" stroke="#d489b3" fill="#f7e2ed"/>
+      <path d="m24 35 24 22-20-5 32 9m43-19 14 9-19 9m-61 28 20 6m47 0 12-7" stroke="#c97ba8"/>
+      <path d="m75 53 11 46M77 51C58 12 55 24 57 29m21 22c10-37 24-27 21-21" stroke="#6f805b"/>
+    </g></svg>
     <div className={styles.spiralBinding}>{Array.from({ length: 18 }, (_, index) => <i key={index} />)}</div>
     <svg className={styles.doodleStar} viewBox="0 0 100 100" fill="none"><g filter="url(#crayon-edge)"><path d="M49 9 61 35 90 38 65 56 73 85 49 67 24 84 32 54 9 36 39 37Z" fill="#c8e4ff" stroke="currentColor" strokeWidth="4" strokeLinejoin="round"/><path d="m43 32 8-12-9 30 15-19-16 32 25-25-17 26 16-13M79 10l4-6m8 20 8-2M8 74l-6 4" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></g></svg>
     <svg className={styles.doodleClouds} viewBox="0 0 240 130" fill="none"><g filter="url(#crayon-edge)" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
@@ -785,10 +800,6 @@ export function GurumiGame() {
 
           <section className={styles.introVisual} aria-label="그리기 기준 이미지">
             <div className={styles.characterCard}>
-              <div className={styles.characterLabel}>
-                <span>TARGET</span>
-                <b>AWSKRUG · 13 CHARACTERS</b>
-              </div>
               <Image
                 alt={`${character.group} 구르미`}
                 className={styles.characterImage}
@@ -816,7 +827,7 @@ export function GurumiGame() {
               storageNotice={storageNotice}
             />
             <details className={styles.operatorTools}>
-              <summary>운영 도구</summary>
+              <summary aria-label="기록 내보내기" title="기록 내보내기"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></svg></summary>
               <div>
                 <button disabled={sortedRecords.length === 0} onClick={exportRecords} type="button">
                   CSV 내보내기

@@ -1556,3 +1556,18 @@
 .revealOverlay img { border-color: #6f8175; box-shadow: 4px 5px 0 #e0e8df; }
 .fullRankGrid li { background: #f6f8f4; }
 .fullRankGrid li[data-podium="true"], .rankList .highlightedRank { background: #fff0a5; }
+
+/* Small drawings scattered through the margins of the page. */
+.doodleRainbow { position: absolute; top: 74px; right: 43%; width: 122px; height: 88px; opacity: .8; transform: rotate(9deg); }
+.doodleHearts { position: absolute; top: 38%; right: 5px; width: 48px; height: 100px; opacity: .65; transform: rotate(12deg); }
+.doodleButterfly { position: absolute; left: 8%; bottom: 150px; width: 105px; height: 90px; opacity: .8; transform: rotate(-12deg); }
+.characterCard { padding-top: 22px; }
+.operatorTools > summary { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 5px; color: #738377; list-style: none; cursor: pointer; }
+.operatorTools > summary::-webkit-details-marker { display: none; }
+.operatorTools > summary:hover { color: #315d43; }
+.operatorTools > summary:focus-visible { outline: 2px solid #47785a; outline-offset: 3px; }
+@media (max-width: 760px) {
+  .doodleRainbow { top: 74px; right: 25%; width: 95px; height: 68px; opacity: .65; }
+  .doodleHearts { right: -13px; width: 40px; opacity: .45; }
+  .doodleButterfly { left: 10%; bottom: 124px; width: 78px; height: 64px; }
+}
