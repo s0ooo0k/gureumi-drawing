@@ -1,13 +1,15 @@
 import "server-only";
 
-import { createHmac, createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHmac, createHash, randomUUID, randomInt, timingSafeEqual } from "node:crypto";
 
 import { isGurumiRecordId } from "./records";
 
-const TOKEN_VERSION = 1;
+import { GURUMI_CHARACTERS, isGurumiCharacterId } from "./characters";
+
+const TOKEN_VERSION = 2;
 const TOKEN_MAX_AGE_MS = 72 * 60 * 60 * 1_000;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1_000;
-export const GURUMI_EXPECTED_ROUND_DURATION_MS = 33_000;
+export const GURUMI_EXPECTED_ROUND_DURATION_MS = 37_000;
 // Several booth devices can share one venue NAT address. Keep the limit high
 // enough for event traffic while still bounding automated bursts.
 const RATE_LIMITS = {
@@ -21,7 +23,8 @@ type RoundTokenPayload = {
   expiresAt: number;
   id: string;
   issuedAt: number;
-  version: typeof TOKEN_VERSION;
+  version: 1 | typeof TOKEN_VERSION;
+  characterId?: string;
 };
 
 type RateLimitEntry = {
@@ -103,10 +106,12 @@ export function createGurumiRoundSession() {
     id: randomUUID(),
     issuedAt,
     version: TOKEN_VERSION,
+    characterId: GURUMI_CHARACTERS[randomInt(GURUMI_CHARACTERS.length)].id,
   };
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
 
   return {
+    characterId: payload.characterId,
     expiresAt: new Date(payload.expiresAt).toISOString(),
     id: payload.id,
     token: `${encodedPayload}.${signature(encodedPayload)}`,
@@ -126,7 +131,7 @@ export function readGurumiRoundSession(token: string, expectedId: string) {
     const now = Date.now();
 
     if (
-      payload.version === TOKEN_VERSION &&
+      (payload.version === 1 || (payload.version === TOKEN_VERSION && isGurumiCharacterId(payload.characterId))) &&
       isGurumiRecordId(payload.id) &&
       payload.id === expectedId &&
       typeof payload.issuedAt === "number" &&
@@ -136,6 +141,7 @@ export function readGurumiRoundSession(token: string, expectedId: string) {
       payload.expiresAt - payload.issuedAt <= TOKEN_MAX_AGE_MS
     ) {
       return {
+        characterId: payload.version === 1 ? undefined : payload.characterId,
         expiresAt: payload.expiresAt,
         id: payload.id,
         issuedAt: payload.issuedAt,

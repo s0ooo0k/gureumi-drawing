@@ -1,11 +1,11 @@
 .page {
-  --gurumi-lime: var(--lime, #b7f500);
+  --gurumi-lime: var(--lime, #ffb347);
   --gurumi-paper: var(--paper, #f7f7f5);
   --gurumi-cyan: #a2f4ee;
   --gurumi-orange: #ff711f;
   --gurumi-ink: #111418;
   --gurumi-muted: #687078;
-  --gurumi-lime-ink: #527900;
+  --gurumi-lime-ink: #935000;
   --gurumi-blue: #116df5;
   --gurumi-surface: #ffffff;
   --gurumi-soft: #eceee9;
@@ -13,7 +13,7 @@
   position: relative;
   min-height: 100svh;
   overflow: hidden;
-  background: #f1f2ee;
+  background: #f4f6fb;
   color: var(--gurumi-ink);
   font-family: var(--font-latin);
 }
@@ -26,8 +26,8 @@
   background-image:
     linear-gradient(rgba(17, 20, 24, 0.055) 1px, transparent 1px),
     linear-gradient(90deg, rgba(17, 20, 24, 0.055) 1px, transparent 1px),
-    radial-gradient(circle at 35% 30%, rgba(183, 245, 0, 0.2), transparent 28%),
-    radial-gradient(circle at 74% 68%, rgba(162, 244, 238, 0.22), transparent 26%);
+    radial-gradient(circle at 35% 30%, rgba(255, 153, 0, 0.2), transparent 28%),
+    radial-gradient(circle at 74% 68%, rgba(123, 164, 214, 0.22), transparent 26%);
   background-size: 64px 64px, 64px 64px, 100% 100%, 100% 100%;
   mask-image: linear-gradient(to bottom, black 70%, transparent);
 }
@@ -194,7 +194,7 @@
 .inputRow input:focus {
   border-color: var(--gurumi-lime-ink);
   background: var(--gurumi-surface);
-  box-shadow: 0 0 0 3px rgba(183, 245, 0, 0.2);
+  box-shadow: 0 0 0 3px rgba(255, 153, 0, 0.2);
 }
 
 .inputRow button,
@@ -337,7 +337,7 @@
 .leaderboardHeading > span {
   border: 1px solid rgba(82, 121, 0, 0.32);
   border-radius: 999px;
-  background: rgba(183, 245, 0, 0.16);
+  background: rgba(255, 153, 0, 0.16);
   color: var(--gurumi-lime-ink);
   padding: 4px 7px;
   font-size: 0.46rem;
@@ -781,7 +781,7 @@
 .phaseLabel {
   border: 1px solid rgba(82, 121, 0, 0.34);
   border-radius: 999px;
-  background: rgba(183, 245, 0, 0.14);
+  background: rgba(255, 153, 0, 0.14);
   color: var(--gurumi-lime-ink);
   padding: 6px 12px;
   font-family: var(--font-unbounded), var(--font-latin);
@@ -1310,3 +1310,15 @@
     animation: none;
   }
 }
+
+.characterGallery { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin: 14px 18px 18px; }
+.characterGallery img { width: 48px; height: 48px; object-fit: contain; border-radius: 12px; background: #fff; border: 1px solid #e5e9ef; }
+.revealOverlay { position: fixed; z-index: 50; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; padding: 24px; text-align: center; background: #162638f5; color: #fff; }
+.revealOverlay img { width: min(260px, 48vw); height: auto; background: #fff; border-radius: 32px; padding: 16px; margin-block: 12px; }
+.revealOverlay p { margin: 0; color: #ffb347; font-weight: 700; letter-spacing: .12em; }
+.revealOverlay h2 { margin: 0; font-size: clamp(1.7rem, 5vw, 3rem); }
+.revealEyebrow { font-size: .75rem; font-weight: 700; letter-spacing: .2em; color: #ffb347; }
+.revealOverlay small { margin-top: 16px; color: #ccd5df; }
+@media (max-width: 600px) { .brand { font-size: .7rem; } .characterGallery img { width: 38px; height: 38px; } }
+
+.brand span { margin-left: .3em; }

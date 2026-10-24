@@ -151,10 +151,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const score = await scoreGurumiDrawing(decoded.strokes);
+    const score = await scoreGurumiDrawing(decoded.strokes, roundSession.characterId);
     const candidate = createScoreRecord({
       id: submission.id,
       name: submission.name,
+      characterId: roundSession.characterId,
       score,
       createdAt: new Date(
         Math.min(Date.now(), roundSession.issuedAt + GURUMI_EXPECTED_ROUND_DURATION_MS),

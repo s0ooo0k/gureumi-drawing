@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
+import { characterImage, characterLabel } from "@/lib/gurumi/characters";
 import type { ScoreRecord } from "@/lib/gurumi/records";
 import type { Stroke } from "@/lib/gurumi/similarity";
 import { decodeStrokes } from "@/lib/gurumi/stroke-codec";
@@ -119,7 +120,7 @@ export function GurumiAwards({ records, initialIndex, onClose }: {
         if (event.key === "ArrowLeft") { event.preventDefault(); setIndex((value) => Math.max(0, value - 1)); }
       }}>
       <header className={styles.header}>
-        <span>AUSGCON 2026 <b>GURUMI AWARDS</b></span>
+        <span>AWS Community Day 2026 <b>GURUMI AWARDS</b></span>
         <div>
           <button type="button" onClick={toggleFullscreen}>{fullscreen ? "전체 화면 해제" : "전체 화면"}</button>
           <button type="button" onClick={onClose}>닫기</button>
@@ -132,8 +133,8 @@ export function GurumiAwards({ records, initialIndex, onClose }: {
           <h2 id="gurumi-award-title">{record.name}</h2>
           <div className={styles.score}>{record.score}<span>점</span></div>
           <div className={styles.reference}>
-            <Image src="/assets/ausgcon/gurumi/reference.png" alt="따라 그린 원본 구르미" width={160} height={160} />
-            <span>이 구르미를 보고<br />30초 동안 그렸어요!</span>
+            <Image src={characterImage(record.characterId)} alt={characterLabel(record.characterId)} width={160} height={160} />
+            <span>{characterLabel(record.characterId)}<br />30초 동안 그렸어요!</span>
           </div>
         </section>
         <figure className={styles.artwork}>

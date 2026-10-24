@@ -6,10 +6,9 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 
 import {
   buildGurumiReferenceModel,
-  GURUMI_PART_IDS,
+  ADAPTIVE_PART_IDS,
   GURUMI_SCORE_GRID_SIZE,
   scoreDrawing,
-  type GurumiPartId,
   type GurumiReferenceModel,
 } from "@/lib/gurumi/similarity";
 import {
@@ -37,22 +36,35 @@ import { encodeStrokes } from "@/lib/gurumi/stroke-codec";
 import { DrawingCanvas, type DrawingCanvasHandle } from "./DrawingCanvas";
 import styles from "./GurumiGame.module.css";
 
-const REFERENCE_IMAGE = "/assets/ausgcon/gurumi/reference.png";
+import { GURUMI_CHARACTERS, characterImage, characterLabel, getGurumiCharacter } from "@/lib/gurumi/characters";
 const SCORE_STORAGE_KEY = "ausgcon-2026-gurumi-scores-semantic-v2";
 const ROUND_DURATION = 30_000;
 const LEADERBOARD_REFRESH_INTERVAL = 10_000;
 
-const PART_LABELS: Record<GurumiPartId, string> = {
-  body: "몸통",
-  eyes: "양쪽 눈",
-  cap: "모자",
-  raisedArm: "든 팔",
-  propHand: "소품·손",
-  face: "코·입",
-  feet: "두 발",
+const PART_LABELS: Record<string, string> = {
+  upperLeft: "왼쪽 위", upperCenter: "가운데 위", upperRight: "오른쪽 위",
+  middleLeft: "왼쪽 중앙", middleCenter: "가운데", middleRight: "오른쪽 중앙",
+  lowerLeft: "왼쪽 아래", lowerCenter: "가운데 아래", lowerRight: "오른쪽 아래",
 };
+type Phase = "intro" | "reveal" | "countdown" | "drawing" | "scoring" | "result";
 
-type Phase = "intro" | "countdown" | "drawing" | "scoring" | "result";
+async function loadReferenceModel(src: string): Promise<GurumiReferenceModel> {
+  const image = new window.Image();
+  await new Promise<void>((resolve, reject) => {
+    const timeout = window.setTimeout(() => reject(new Error("구르미 이미지를 불러오지 못했습니다. 다시 시도해 주세요.")), 12_000);
+    image.onload = () => { window.clearTimeout(timeout); resolve(); };
+    image.onerror = () => { window.clearTimeout(timeout); reject(new Error("구르미 이미지를 불러오지 못했습니다. 다시 시도해 주세요.")); };
+    image.src = src;
+  });
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = GURUMI_SCORE_GRID_SIZE;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) throw new Error("그리기를 지원하는 브라우저로 다시 접속해 주세요.");
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return buildGurumiReferenceModel(context.getImageData(0, 0, canvas.width, canvas.height), "adaptive");
+}
 type StorageMode = "loading" | "live" | "saving" | "offline";
 
 function readCachedRecords() {
@@ -124,6 +136,7 @@ function responseErrorMessage(body: unknown, fallback: string) {
 
 async function prepareRound() {
   const { body, response } = await fetchJsonWithTimeout("/api/gurumi/round", {
+    headers: { "X-Gurumi-Client": "krug-v1" },
     method: "POST",
   });
   if (!response.ok) {
@@ -162,7 +175,7 @@ function KioskHeader() {
   return (
     <header className={styles.header}>
       <Link className={styles.brand} href="/" aria-label="구르미 그리기 홈으로 이동">
-        AUSGCON <span>2026</span>
+        AWS Community Day <span>2026</span>
       </Link>
       <div className={styles.boothId}>
         <span>BOOTH</span>
@@ -271,7 +284,7 @@ function FullLeaderboard({
 
         <footer className={styles.fullRankingFooter}>
           <span>점수순 · 동점일 경우 보정점수와 기록시각 순</span>
-          <b>AUSGCON 2026 · BOOTH 03</b>
+          <b>AWS Community Day 2026 · BOOTH 03</b>
         </footer>
       </div>
     </dialog>
@@ -367,7 +380,6 @@ export function GurumiGame() {
   const [countdown, setCountdown] = useState(3);
   const [secondsLeft, setSecondsLeft] = useState(ROUND_DURATION / 1_000);
   const [referenceModel, setReferenceModel] = useState<GurumiReferenceModel | null>(null);
-  const [referenceError, setReferenceError] = useState(false);
   const [records, setRecords] = useState<ScoreRecord[]>([]);
   const [currentRecord, setCurrentRecord] = useState<ScoreRecord | null>(null);
   const [storageMode, setStorageMode] = useState<StorageMode>("loading");
@@ -381,39 +393,6 @@ export function GurumiGame() {
     const cachedRecords = readCachedRecords();
     recordsRef.current = cachedRecords;
     setRecords(cachedRecords);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const image = new window.Image();
-    image.src = REFERENCE_IMAGE;
-    image.onload = () => {
-      if (cancelled) return;
-      const canvas = document.createElement("canvas");
-      canvas.width = GURUMI_SCORE_GRID_SIZE;
-      canvas.height = GURUMI_SCORE_GRID_SIZE;
-      const context = canvas.getContext("2d", { willReadFrequently: true });
-      if (!context) {
-        setReferenceError(true);
-        return;
-      }
-      context.fillStyle = "#ffffff";
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      try {
-        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-        setReferenceModel(buildGurumiReferenceModel(imageData));
-      } catch {
-        setReferenceError(true);
-      }
-    };
-    image.onerror = () => {
-      if (!cancelled) setReferenceError(true);
-    };
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   useEffect(
@@ -509,6 +488,7 @@ export function GurumiGame() {
       name: normalizedName,
       createdAt: new Date().toISOString(),
       score,
+      characterId: roundSession.characterId,
     });
     const { encoded } = encodeStrokes(strokes);
     const submission: ScoreSubmission = {
@@ -568,6 +548,12 @@ export function GurumiGame() {
       setPhase("result");
     }, remainingRevealDelay);
   }, [name, persistRecords, referenceModel, roundSession]);
+
+  useEffect(() => {
+    if (phase !== "reveal") return;
+    const timeout = window.setTimeout(() => setPhase("countdown"), 4_000);
+    return () => window.clearTimeout(timeout);
+  }, [phase]);
 
   useEffect(() => {
     if (phase !== "countdown") return;
@@ -630,15 +616,18 @@ export function GurumiGame() {
   }, [currentRecord, sortedRecords]);
   const normalizedName = normalizeGurumiName(name);
   const validName = normalizedName !== null;
-  const referenceReady = referenceModel !== null && !referenceError;
+  const character = getGurumiCharacter(roundSession?.characterId) ?? GURUMI_CHARACTERS[0];
+  const referenceImage = characterImage(character.id);
 
   const startRound = async () => {
-    if (!normalizedName || !referenceReady || roundStarting) return;
+    if (!normalizedName || roundStarting) return;
     setRoundStarting(true);
     setStartError("");
 
     try {
       const session = await prepareRound();
+      const model = await loadReferenceModel(characterImage(session.characterId));
+      setReferenceModel(model);
       setRoundSession(session);
       setName(normalizedName);
       roundFinishedRef.current = false;
@@ -647,7 +636,7 @@ export function GurumiGame() {
       canvasRef.current?.clear();
       setSecondsLeft(ROUND_DURATION / 1_000);
       setCurrentRecord(null);
-      setPhase("countdown");
+      setPhase("reveal");
     } catch (error) {
       setStartError(
         error instanceof Error
@@ -679,6 +668,7 @@ export function GurumiGame() {
       [
         "순위",
         "닉네임",
+        "소모임",
         "점수",
         "보정점수",
         "원시점수",
@@ -688,13 +678,14 @@ export function GurumiGame() {
         "겹쳐그리기효율",
         "선방향다양성",
         "반복폐곡선",
-        ...GURUMI_PART_IDS.map((part) => PART_LABELS[part]),
+        ...ADAPTIVE_PART_IDS.map((part) => PART_LABELS[part]),
         "기록시각",
         "채점버전",
       ],
       ...sortedRecords.map((record, index) => [
         index + 1,
         record.name,
+        characterLabel(record.characterId),
         record.score,
         record.calibrated.toFixed(6),
         record.raw.toFixed(6),
@@ -704,7 +695,7 @@ export function GurumiGame() {
         record.overdrawEfficiency.toFixed(6),
         record.orientationEntropy.toFixed(6),
         record.loopMonotony.toFixed(6),
-        ...GURUMI_PART_IDS.map((part) => record.partScores[part].toFixed(6)),
+        ...ADAPTIVE_PART_IDS.map((part) => (record.partScores[part] ?? 0).toFixed(6)),
         record.createdAt,
         record.scoreVersion,
       ]),
@@ -713,7 +704,7 @@ export function GurumiGame() {
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `ausgcon-gurumi-scores-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.download = `awskrug-gurumi-scores-${new Date().toISOString().slice(0, 10)}.csv`;
     anchor.click();
     URL.revokeObjectURL(url);
   };
@@ -725,15 +716,15 @@ export function GurumiGame() {
         <KioskHeader />
         <div className={styles.introLayout}>
           <section className={styles.introCopy}>
-            <p className={styles.eyebrow}>AUSGCON 2026 · SIDE EVENT</p>
+            <p className={styles.eyebrow}>AWS Community Day 2026 · SIDE EVENT</p>
             <h1>
               DRAW
               <strong>GURUMI</strong>
             </h1>
             <p className={styles.introLead}>
-              30초 안에 점프하는 AUSG 구르미를 그려보세요.
+              랜덤으로 만나는 AWSKRUG 소모임 구르미!
               <br />
-              완성된 그림을 원본과 비교해 유사도 점수를 알려드려요.
+              13가지 구르미 중 하나를 만나고, 30초 동안 따라 그려보세요.
             </p>
 
             <div className={styles.ruleRow} aria-label="게임 규칙">
@@ -757,18 +748,15 @@ export function GurumiGame() {
                   }}
                 />
                 <button
-                  disabled={!validName || !referenceReady || roundStarting}
+                  disabled={!validName || roundStarting}
                   onClick={() => void startRound()}
                   type="button"
                 >
-                  {roundStarting ? "게임 준비 중" : referenceReady ? "도전 시작" : "이미지 준비 중"}
+                  {roundStarting ? "구르미 뽑는 중…" : "랜덤 구르미 만나기"}
                   <span aria-hidden="true">↗</span>
                 </button>
               </div>
-              <p>닉네임과 점수만 현장 리더보드에 공개돼요.</p>
-              {referenceError && (
-                <p className={styles.errorMessage}>기준 이미지를 불러오지 못했습니다. 새로고침해 주세요.</p>
-              )}
+              <p>소모임 소개 후 그리기가 시작돼요. 닉네임과 점수는 랭킹에 공개돼요.</p>
               {startError && <p className={styles.errorMessage}>{startError}</p>}
             </div>
           </section>
@@ -777,18 +765,21 @@ export function GurumiGame() {
             <div className={styles.characterCard}>
               <div className={styles.characterLabel}>
                 <span>TARGET</span>
-                <b>점프 구르미</b>
+                <b>AWSKRUG · 13 CHARACTERS</b>
               </div>
               <Image
-                alt="주황색 모자를 쓰고 보라색 소품을 든 채 점프하는 AUSG 구르미"
+                alt={`${character.group} 구르미`}
                 className={styles.characterImage}
                 height={1254}
                 priority
                 sizes="(max-width: 900px) 82vw, 38vw"
-                src={REFERENCE_IMAGE}
+                src={referenceImage}
                 width={1254}
               />
-              <p>한 손은 번쩍, 한 손엔 보라색 소품!</p>
+              <p>어떤 소모임의 구르미를 만나게 될까요?</p>
+              <div className={styles.characterGallery} aria-label="13개 AWSKRUG 소모임 구르미">
+                {GURUMI_CHARACTERS.map((item) => <Image key={item.id} src={characterImage(item.id)} alt={item.group} title={item.group} width={72} height={72} />)}
+              </div>
             </div>
           </section>
 
@@ -824,6 +815,7 @@ export function GurumiGame() {
             <strong>{name.trim()}</strong>
           </div>
           <div className={styles.phaseLabel}>
+            {phase === "reveal" && "MEET YOUR GURUMI"}
             {phase === "countdown" && "READY"}
             {phase === "drawing" && "DRAW NOW"}
             {phase === "scoring" && "ANALYZING"}
@@ -840,15 +832,15 @@ export function GurumiGame() {
           <section className={styles.referencePanel}>
             <div className={styles.panelHeading}>
               <span>REFERENCE</span>
-              <b>이 구르미를 따라 그려보세요</b>
+              <b>AWSKRUG {character.group}</b>
             </div>
             <div className={styles.referenceImageWrap}>
               <Image
-                alt="주황색 모자를 쓰고 보라색 소품을 든 채 점프하는 AUSG 구르미 기준 이미지"
+                alt={`${character.group} 구르미 기준 이미지`}
                 fill
                 priority
                 sizes="(max-width: 900px) 88vw, 40vw"
-                src={REFERENCE_IMAGE}
+                src={referenceImage}
               />
             </div>
           </section>
@@ -868,9 +860,20 @@ export function GurumiGame() {
             <DrawingCanvas disabled={phase !== "drawing"} ref={canvasRef} />
           </section>
 
+          {phase === "reveal" && (
+            <div className={styles.revealOverlay} role="status" aria-live="polite">
+              <span className={styles.revealEyebrow}>MEET YOUR GURUMI</span>
+              <Image src={referenceImage} alt={`${character.group} 구르미`} width={260} height={260} priority />
+              <p>AWSKRUG</p>
+              <h2>{character.group}</h2>
+              <span>{character.name} 구르미가 찾아왔어요.</span>
+              <small>잠시 후 30초 그리기가 시작됩니다</small>
+            </div>
+          )}
+
           {phase === "countdown" && (
             <div className={styles.countdownOverlay} aria-live="assertive">
-              <p>구르미를 잘 봐주세요</p>
+              <p>{character.group} 구르미를 잘 봐주세요</p>
               <strong key={countdown}>{countdown}</strong>
               <span>마우스를 준비하세요</span>
             </div>
@@ -888,7 +891,7 @@ export function GurumiGame() {
         {phase === "result" && currentRecord && (
           <section className={styles.resultSection} ref={resultSectionRef}>
             <div className={styles.scoreCard}>
-              <p>MATCH SCORE</p>
+              <p>MATCH SCORE · {characterLabel(currentRecord.characterId)}</p>
               <div className={styles.scoreValue}>
                 <strong>{currentRecord.score}</strong>
                 <span>점</span>

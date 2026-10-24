@@ -474,3 +474,5 @@
     flex: 1;
   }
 }
+
+.header a span { margin-left: .3em; }

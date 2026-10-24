@@ -8,8 +8,8 @@ import { listGurumiScores } from "@/lib/gurumi/storage";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "구르미 그리기 운영 | AUSGCON 2026",
-  description: "AUSGCON 2026 구르미 그리기 부스 기록 관리",
+  title: "구르미 그리기 운영 | AWS Community Day 2026",
+  description: "AWS Community Day 2026 구르미 그리기 부스 기록 관리",
   robots: {
     index: false,
     follow: false,

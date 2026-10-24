@@ -18,13 +18,13 @@
 }
 
 :root {
-  --paper: #f7f7f5;
-  --ink: #111111;
+  --paper: #f7f8fc;
+  --ink: #172638;
   --muted: #6f737a;
   --surface: #eef1f4;
   --ice: #eaf3ff;
   --night: #0b0d10;
-  --lime: #b7f500;
+  --lime: #ffb347;
   --blue: #b9d8ff;
   --line: color-mix(in srgb, var(--ink) 16%, transparent);
   --page: min(1280px, calc(100vw - 96px));

@@ -1,7 +1,6 @@
+import { isGurumiCharacterId } from "./characters";
 import {
-  GURUMI_PART_IDS,
   GURUMI_SCORE_VERSION,
-  type GurumiPartId,
   type SimilarityScore,
 } from "./similarity";
 
@@ -19,7 +18,8 @@ export type ScoreRecord = {
   overdrawEfficiency: number;
   orientationEntropy: number;
   loopMonotony: number;
-  partScores: Record<GurumiPartId, number>;
+  partScores: Record<string, number>;
+  characterId?: string;
   createdAt: string;
   scoreVersion: string;
 };
@@ -32,6 +32,7 @@ export type ScoreSubmission = {
 };
 
 export type GurumiRoundSession = {
+  characterId: string;
   expiresAt: string;
   id: string;
   token: string;
@@ -69,6 +70,7 @@ export function isGurumiRoundSession(value: unknown): value is GurumiRoundSessio
   const session = value as Partial<GurumiRoundSession>;
   return (
     isGurumiRecordId(session.id) &&
+    isGurumiCharacterId(session.characterId) &&
     typeof session.token === "string" &&
     session.token.length > 0 &&
     typeof session.expiresAt === "string" &&
@@ -97,15 +99,18 @@ export function createScoreRecord({
   name,
   score,
   createdAt,
+  characterId,
 }: {
   id: string;
   name: string;
   score: SimilarityScore;
   createdAt: string;
+  characterId?: string;
 }): ScoreRecord {
   return {
     id,
     name,
+    ...(characterId ? { characterId } : {}),
     score: score.score,
     calibrated: score.calibrated,
     raw: score.raw,
@@ -116,8 +121,8 @@ export function createScoreRecord({
     orientationEntropy: score.orientationEntropy,
     loopMonotony: score.loopMonotony,
     partScores: Object.fromEntries(
-      GURUMI_PART_IDS.map((part) => [part, score.parts[part].score]),
-    ) as Record<GurumiPartId, number>,
+      Object.entries(score.parts).map(([part, value]) => [part, value.score]),
+    ),
     createdAt,
     scoreVersion: GURUMI_SCORE_VERSION,
   };
@@ -148,9 +153,10 @@ export function isScoreRecord(value: unknown): value is ScoreRecord {
     typeof record.orientationEntropy === "number" &&
     typeof record.loopMonotony === "number" &&
     Boolean(record.partScores) &&
-    GURUMI_PART_IDS.every(
-      (part) => typeof record.partScores?.[part] === "number",
-    ) &&
+    typeof record.partScores === "object" &&
+    Object.values(record.partScores ?? {}).length > 0 &&
+    Object.values(record.partScores ?? {}).every((part) => typeof part === "number" && Number.isFinite(part)) &&
+    (record.characterId === undefined || typeof record.characterId === "string") &&
     typeof record.createdAt === "string" &&
     typeof record.scoreVersion === "string"
   );

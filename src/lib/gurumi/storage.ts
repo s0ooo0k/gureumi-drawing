@@ -6,7 +6,7 @@ import { GURUMI_LEADERBOARD_LIMIT, isScoreRecord, type ScoreRecord } from "./rec
 import type { SimilarityScore } from "./similarity";
 
 const TABLE_NAME = "gurumi_scores";
-const SCORE_COLUMNS = "id,name,score,calibrated,raw,semantic,global_score,density_ratio,overdraw_efficiency,orientation_entropy,loop_monotony,part_scores,created_at,score_version";
+const SCORE_COLUMNS = "id,name,score,calibrated,raw,semantic,global_score,density_ratio,overdraw_efficiency,orientation_entropy,loop_monotony,part_scores,created_at,score_version,character_id";
 let client: SupabaseClient | null = null;
 
 function getClient() {
@@ -27,6 +27,7 @@ function recordFromRow(row: Record<string, unknown>): ScoreRecord {
     overdrawEfficiency: row.overdraw_efficiency, orientationEntropy: row.orientation_entropy,
     loopMonotony: row.loop_monotony, partScores: row.part_scores,
     createdAt: row.created_at, scoreVersion: row.score_version,
+    ...(typeof row.character_id === "string" ? { characterId: row.character_id } : {}),
   };
   if (!isScoreRecord(candidate)) throw new Error("Stored Gurumi score has an invalid shape.");
   return candidate;
@@ -79,6 +80,7 @@ export async function saveGurumiScore({ record, scoreDetails, strokes, pointCoun
     loop_monotony: record.loopMonotony, part_scores: record.partScores,
     score_details: scoreDetails, strokes, point_count: pointCount,
     created_at: record.createdAt, score_version: record.scoreVersion,
+    character_id: record.characterId ?? null,
   }, { onConflict: "id", ignoreDuplicates: true });
   if (error) throw error;
   const storedRecord = await findGurumiScore(record.id);

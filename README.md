@@ -1,6 +1,6 @@
-# 구르미 그리기
+# AWS Community Day 2026 · 구르미 그리기
 
-30초 동안 구르미를 따라 그리고 닮은꼴 점수로 순위에 도전하는 Next.js 게임입니다.
+AWSKRUG 소모임 구르미 13종 중 서버가 무작위로 고른 한 구르미를 30초 동안 따라 그리고 닮은꼴 점수로 순위에 도전하는 Next.js 게임입니다.
 AUSGCON 사이트에서 게임만 분리하고 Turso 저장 계층을 Supabase Postgres로 교체했습니다.
 
 ## 실행
@@ -20,7 +20,7 @@ npm run dev
 ## Supabase 설정
 
 1. 개인 Supabase 프로젝트를 생성합니다.
-2. SQL Editor에서 `supabase/migrations/20261019000000_create_gurumi_scores.sql`을 실행합니다.
+2. SQL Editor에서 `supabase/migrations/`의 SQL을 파일명 순서대로 실행합니다. 기존 DB는 `20261024000000_add_character_id.sql`만 추가 적용합니다.
 3. 프로젝트 URL과 Secret key를 `.env.local`의 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`에 설정합니다. 구형 `service_role` 키는 `SUPABASE_SERVICE_ROLE_KEY`로도 지원합니다.
 4. `openssl rand -hex 32`로 `GURUMI_ROUND_SECRET`, `GURUMI_ADMIN_SESSION_SECRET`을 각각 생성하고 관리자 비밀번호를 설정합니다.
 
@@ -55,3 +55,12 @@ npm run build
 원본의 게임 코드, 구르미 이미지와 폰트를 포함하며 저작권과 자산 권리는 원저작자에게 있습니다. 원본에 라이선스 파일이 없어 별도 오픈소스 라이선스를 추가하지 않았습니다. 기존 행사 DB와 참가자 기록은 복사하지 않습니다.
 
 설정 참고: [Supabase API 키](https://supabase.com/docs/guides/getting-started/api-keys), [Supabase upsert](https://supabase.com/docs/reference/javascript/upsert), [Vercel Next.js 배포](https://vercel.com/docs/frameworks/full-stack/nextjs).
+
+
+## 랜덤 소모임과 이미지별 채점
+
+`public/assets/krug/`에 제공받은 원본 PNG 13개를 보관하고, `src/lib/gurumi/characters.ts`에서 파일과 소모임 이름을 관리합니다. 라운드 발급 시 서버가 균등하게 추첨한 `characterId`를 서명 토큰에 넣습니다. 시작할 때 소모임 소개를 4초 보여주고 카운트다운과 30초 그리기를 진행합니다.
+
+각 이미지에서 투명 배경을 흰색으로 합성하고 기준 윤곽·방향·9개 상대 영역을 추출해 비교합니다. 고정된 눈·모자·팔 좌표는 새 구르미에 사용하지 않습니다. 전체 형태와 영역별 선의 완성도, 빈 영역·반복 낙서·겹쳐그리기 페널티를 함께 계산합니다. 난이도별 경험적 보정은 적용하지 않았으므로 행사 전에 직접 그려보고 점수 분포를 확인하는 것을 권장합니다.
+
+서버는 클라이언트가 지정한 이미지가 아닌 서명된 구르미로 다시 채점합니다. 기록에 소모임 ID를 저장해 관리자·CSV·시상에서도 원본을 찾습니다. 9개 영역 점수는 `reference-shape-v4` 기록부터 적용되며 이전 기록과 서명된 오프라인 제출도 유지됩니다. 제공된 KRUG 이미지의 권리는 원저작자에게 있습니다.

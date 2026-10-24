@@ -12,53 +12,24 @@ import {
   type Stroke,
 } from "./similarity";
 
-let referenceModelPromise: Promise<GurumiReferenceModel> | null = null;
+import { characterImage, isGurumiCharacterId } from "./characters";
 
-async function buildServerReferenceModel() {
-  const referencePath = path.join(
-    process.cwd(),
-    "public",
-    "assets",
-    "ausgcon",
-    "gurumi",
-    "reference.png",
-  );
-  const { data, info } = await sharp(referencePath)
-    .resize(GURUMI_SCORE_GRID_SIZE, GURUMI_SCORE_GRID_SIZE, {
-      fit: "fill",
-      kernel: sharp.kernel.cubic,
-    })
-    .ensureAlpha(1)
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-
-  if (
-    info.width !== GURUMI_SCORE_GRID_SIZE ||
-    info.height !== GURUMI_SCORE_GRID_SIZE ||
-    info.channels !== 4
-  ) {
-    throw new Error("The Gurumi reference image could not be normalized.");
-  }
-
-  const imageData = {
-    data: new Uint8ClampedArray(data),
-    height: info.height,
-    width: info.width,
-  } as ImageData;
-
-  return buildGurumiReferenceModel(imageData);
+const models = new Map<string, Promise<GurumiReferenceModel>>();
+async function buildServerReferenceModel(characterId?: string) {
+  if (characterId !== undefined && !isGurumiCharacterId(characterId)) throw new Error("Unknown Gurumi character.");
+  const { data, info } = await sharp(path.join(process.cwd(), "public", characterImage(characterId)))
+    .flatten({ background: "#ffffff" })
+    .resize(GURUMI_SCORE_GRID_SIZE, GURUMI_SCORE_GRID_SIZE, { fit: "fill", kernel: sharp.kernel.cubic })
+    .ensureAlpha(1).raw().toBuffer({ resolveWithObject: true });
+  return buildGurumiReferenceModel({ data: new Uint8ClampedArray(data), height: info.height, width: info.width } as ImageData,
+    characterId ? "adaptive" : "legacy");
 }
-
-async function getServerReferenceModel() {
-  if (!referenceModelPromise) {
-    referenceModelPromise = buildServerReferenceModel().catch((error: unknown) => {
-      referenceModelPromise = null;
-      throw error;
-    });
+export async function scoreGurumiDrawing(strokes: Stroke[], characterId?: string) {
+  const key = characterId ?? "legacy";
+  let model = models.get(key);
+  if (!model) {
+    model = buildServerReferenceModel(characterId).catch((error: unknown) => { models.delete(key); throw error; });
+    models.set(key, model);
   }
-  return referenceModelPromise;
-}
-
-export async function scoreGurumiDrawing(strokes: Stroke[]) {
-  return scoreDrawing(strokes, await getServerReferenceModel());
+  return scoreDrawing(strokes, await model);
 }

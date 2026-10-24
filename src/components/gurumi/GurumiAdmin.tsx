@@ -11,6 +11,7 @@ import {
   updateGurumiAdminRecord,
   type GurumiAdminActionResult,
 } from "@/app/gurumi/admin/actions";
+import { characterLabel } from "@/lib/gurumi/characters";
 import type { ScoreRecord } from "@/lib/gurumi/records";
 
 import styles from "./GurumiAdmin.module.css";
@@ -173,7 +174,7 @@ export function GurumiAdmin({
       <div className={styles.gridBackdrop} aria-hidden="true" />
       <header className={styles.header}>
         <Link href="/gurumi" aria-label="구르미 그리기 화면으로 이동">
-          AUSGCON <span>2026</span>
+          AWS Community Day <span>2026</span>
         </Link>
         <div>
           <span>BOOTH 03</span>
@@ -295,7 +296,7 @@ export function GurumiAdmin({
                             value={draft.score}
                           />
                         </td>
-                        <td>{formatRecordedAt(record.createdAt)}</td>
+                        <td><small>{characterLabel(record.characterId)}</small><br />{formatRecordedAt(record.createdAt)}</td>
                         <td><code title={record.id}>{record.id.slice(0, 8)}</code></td>
                         <td>
                           <div className={styles.rowActions}>

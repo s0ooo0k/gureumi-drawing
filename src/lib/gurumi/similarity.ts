@@ -8,7 +8,7 @@ export type Stroke = {
 };
 
 export const GURUMI_SCORE_GRID_SIZE = 128;
-export const GURUMI_SCORE_VERSION = "semantic-shape-v3";
+export const GURUMI_SCORE_VERSION = "reference-shape-v4";
 
 export const GURUMI_PART_IDS = [
   "body",
@@ -46,7 +46,7 @@ export type SimilarityScore = {
   dominantDirection: number;
   strokeLength: number;
   scoreCap: number;
-  parts: Record<GurumiPartId, PartScore>;
+  parts: Record<string, PartScore>;
 };
 
 const FEATURE_IDS = [
@@ -92,6 +92,7 @@ export type GurumiReferenceModel = {
   bounds: Bounds;
   pixelCount: number;
   features: Record<FeatureId, FeatureReference>;
+  regions?: { id: string; bounds: Bounds; reference: FeatureReference }[];
 };
 
 const GRID_SIZE = GURUMI_SCORE_GRID_SIZE;
@@ -838,7 +839,7 @@ function findBestAlignedMask(
   };
 }
 
-export function buildGurumiReferenceModel(imageData: ImageData): GurumiReferenceModel {
+export function buildGurumiReferenceModel(imageData: ImageData, mode: "legacy" | "adaptive" = "legacy"): GurumiReferenceModel {
   if (imageData.width !== GRID_SIZE || imageData.height !== GRID_SIZE) {
     throw new Error(`Reference image must be ${GRID_SIZE}x${GRID_SIZE}px.`);
   }
@@ -863,12 +864,13 @@ export function buildGurumiReferenceModel(imageData: ImageData): GurumiReference
   }));
 
   for (const feature of FEATURE_IDS) {
-    if (features[feature].pixelCount === 0) {
+    if (mode === "legacy" && features[feature].pixelCount === 0) {
       throw new Error(`Reference feature ${feature} does not contain detectable lines.`);
     }
   }
 
   return {
+    ...(mode === "adaptive" ? { regions: buildAdaptiveRegions(mask, bounds) } : {}),
     version: GURUMI_SCORE_VERSION,
     mask,
     distances: distanceTransform(mask),
@@ -930,6 +932,7 @@ function emptyScore(strokeLength = 0): SimilarityScore {
 }
 
 export function scoreDrawing(strokes: Stroke[], reference: GurumiReferenceModel): SimilarityScore {
+  if (reference.regions) return scoreAdaptiveDrawing(strokes, reference);
   const strokeAnalysis = analyzeStrokes(strokes);
   const userBounds = getRobustStrokeBounds(strokes);
   if (!userBounds || strokeAnalysis.strokeLength === 0) {
@@ -1111,4 +1114,100 @@ export function scoreDrawing(strokes: Stroke[], reference: GurumiReferenceModel)
     scoreCap,
     parts,
   };
+}
+
+
+// Each image supplies its own edges and occupied regions. No pose or accessory
+// coordinates from the original event mascot are used for the KRUG characters.
+export const ADAPTIVE_PART_IDS = [
+  "upperLeft", "upperCenter", "upperRight",
+  "middleLeft", "middleCenter", "middleRight",
+  "lowerLeft", "lowerCenter", "lowerRight",
+] as const;
+
+function buildAdaptiveRegions(mask: Uint8Array, bounds: Bounds) {
+  return ADAPTIVE_PART_IDS.map((id, index) => {
+    const column = index % 3;
+    const row = Math.floor(index / 3);
+    const regionBounds = {
+      minX: Math.floor(bounds.minX + (bounds.maxX - bounds.minX + 1) * column / 3),
+      maxX: Math.floor(bounds.minX + (bounds.maxX - bounds.minX + 1) * (column + 1) / 3) - 1,
+      minY: Math.floor(bounds.minY + (bounds.maxY - bounds.minY + 1) * row / 3),
+      maxY: Math.floor(bounds.minY + (bounds.maxY - bounds.minY + 1) * (row + 1) / 3) - 1,
+    };
+    const regionMask = clipMask(mask, regionBounds);
+    return { id, bounds: regionBounds, reference: {
+      mask: regionMask, pixelCount: countMaskPixels(regionMask),
+      distances: distanceTransform(regionMask), orientations: buildMaskOrientations(regionMask),
+    } };
+  });
+}
+
+function clipMask(mask: Uint8Array, bounds: Bounds) {
+  const clipped = new Uint8Array(mask.length);
+  for (let y = Math.max(0, bounds.minY); y <= Math.min(GRID_SIZE - 1, bounds.maxY); y++) {
+    for (let x = Math.max(0, bounds.minX); x <= Math.min(GRID_SIZE - 1, bounds.maxX); x++) {
+      clipped[y * GRID_SIZE + x] = mask[y * GRID_SIZE + x];
+    }
+  }
+  return clipped;
+}
+
+function scoreAdaptiveDrawing(strokes: Stroke[], reference: GurumiReferenceModel): SimilarityScore {
+  const analysis = analyzeStrokes(strokes);
+  const bounds = getRobustStrokeBounds(strokes);
+  const empty = { ...emptyScore(analysis.strokeLength), parts: createRecord(ADAPTIVE_PART_IDS,
+    () => ({ score: 0, precision: 0, recall: 0 })) };
+  if (!bounds || analysis.strokeLength === 0) return empty;
+  const alignment = findBestAlignedMask(strokes, bounds, reference);
+  const userInk = countMaskPixels(alignment.mask);
+  if (!userInk) return empty;
+  const parts: Record<string, PartScore> = {};
+  let weightedScore = 0;
+  let totalWeight = 0;
+  for (const region of reference.regions ?? []) {
+    const userRegion = clipMask(alignment.mask, region.bounds);
+    const precision = directionalMatch(userRegion, region.reference.distances,
+      GLOBAL_MATCH_SIGMA, alignment.orientations, region.reference.orientations);
+    const recall = directionalMatch(region.reference.mask, distanceTransform(userRegion),
+      GLOBAL_MATCH_SIGMA, region.reference.orientations, alignment.orientations);
+    const score = fBeta(precision, recall, 1) * Math.sqrt(recall);
+    parts[region.id] = { score, precision, recall };
+    // Small details matter, without letting empty corners lower the score.
+    const weight = Math.sqrt(region.reference.pixelCount);
+    weightedScore += score * weight;
+    totalWeight += weight;
+  }
+  const semantic = totalWeight ? weightedScore / totalWeight : 0;
+  const globalLineScore = fBeta(alignment.precision, alignment.recall, 1);
+  const global = globalLineScore * 0.75 + alignment.structure * 0.25;
+  const raw = semantic * 0.45 + global * 0.55;
+  const poseCoverage = absoluteCellCoverage(alignment.mask, reference.mask);
+  const densityRatio = userInk / reference.pixelCount;
+  const excessInk = Math.max(0, densityRatio - 1.12);
+  const densityFactor = Math.exp(-2.4 * excessInk * excessInk);
+  const transformedLength = analysis.strokeLength * alignment.transform.scale;
+  const overdrawEfficiency = clamp(userInk / Math.max(1, transformedLength * 3 + analysis.strokeCount * 5));
+  const concentricRisk = analysis.radialLoopCount >= 3
+    ? smoothstep(0.45, 0.78, analysis.angularMonotony) * smoothstep(1.5, 4.5, analysis.radialLoopCount) : 0;
+  const span = clamp(Math.min((bounds.maxX - bounds.minX) / 0.32, (bounds.maxY - bounds.minY) / 0.32));
+  const effort = Math.sqrt(span * clamp(analysis.strokeLength / 1.25));
+  const penalized = Math.pow(clamp((raw - 0.08) / 0.82), 0.85) * densityFactor *
+    (0.35 + 0.65 * smoothstep(0.25, 0.7, overdrawEfficiency)) *
+    (0.5 + 0.5 * smoothstep(0.25, 0.55, analysis.orientationEntropy)) *
+    (1 - 0.65 * concentricRisk) * effort;
+  const scoreCap = Math.min(99,
+    45 + 54 * smoothstep(0.3, 0.75, poseCoverage),
+    39 + 60 * smoothstep(0.2, 0.62, overdrawEfficiency),
+    99 - 50 * smoothstep(1.45, 1.85, densityRatio), 99 - 60 * concentricRisk);
+  const calibrated = Math.min(0.99, scoreCap / 100, clamp(penalized));
+  let unmatched = 0;
+  for (let index = 0; index < alignment.mask.length; index++) {
+    if (alignment.mask[index] && reference.distances[index] > 6) unmatched++;
+  }
+  return { score: Math.round(calibrated * 100), calibrated, raw, semantic, global,
+    precision: alignment.precision, recall: alignment.recall, structure: alignment.structure,
+    unmatchedInk: unmatched / userInk, poseCoverage, densityRatio, overdrawEfficiency,
+    orientationEntropy: analysis.orientationEntropy, loopMonotony: analysis.angularMonotony,
+    dominantDirection: analysis.dominantDirection, strokeLength: analysis.strokeLength, scoreCap, parts };
 }

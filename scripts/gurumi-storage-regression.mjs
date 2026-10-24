@@ -15,10 +15,11 @@ function compile(file, imports = {}) {
   return box.exports;
 }
 const similarity = compile("src/lib/gurumi/similarity.ts");
-const records = compile("src/lib/gurumi/records.ts", { "./similarity": similarity });
+const characters = compile("src/lib/gurumi/characters.ts");
+const records = compile("src/lib/gurumi/records.ts", { "./similarity": similarity, "./characters": characters });
 const zeroScore = similarity.scoreDrawing([], {});
-const record = records.createScoreRecord({ id: "test-record", name: "테스트", score: zeroScore, createdAt: "2026-10-19T12:00:00+00:00" });
-const fixture = { id: record.id, name: record.name, created_at: record.createdAt };
+const record = records.createScoreRecord({ id: "test-record", name: "테스트", score: zeroScore, characterId: "devops", createdAt: "2026-10-19T12:00:00+00:00" });
+const fixture = { id: record.id, name: record.name, created_at: record.createdAt, character_id: record.characterId };
 Object.assign(fixture, {
   score: record.score, calibrated: record.calibrated, raw: record.raw,
   semantic: record.semantic, global_score: record.global, density_ratio: record.densityRatio,
@@ -69,6 +70,7 @@ assert.equal(insert.url.searchParams.get("on_conflict"), "id");
 assert.ok(new Headers(insert.headers).get("prefer").includes("resolution=ignore-duplicates"));
 assert.deepEqual(JSON.parse(insert.body).part_scores, record.partScores);
 assert.equal(JSON.parse(insert.body).strokes, "encoded");
+assert.equal(JSON.parse(insert.body).character_id, "devops");
 responseData = { ...fixture, score: "invalid" };
 await assert.rejects(storage.findGurumiScore(fixture.id), /invalid shape/);
 fail = true;

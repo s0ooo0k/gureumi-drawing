@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import * as crypto from "node:crypto";
 import fs from "node:fs";
+import path from "node:path";
 
 import sharp from "sharp";
 import ts from "typescript";
@@ -69,10 +70,12 @@ function encodeStroke(points) {
   return bytes.toString("base64");
 }
 
+const characters = compileTypeScript("src/lib/gurumi/characters.ts");
 const similarity = compileTypeScript("src/lib/gurumi/similarity.ts");
 const codec = compileTypeScript(
   "src/lib/gurumi/stroke-codec.ts",
   (id) => {
+    if (id === "./characters") return characters;
     if (id === "./similarity") return similarity;
     throw new Error(`Unexpected runtime import: ${id}`);
   },
@@ -80,6 +83,7 @@ const codec = compileTypeScript(
 const records = compileTypeScript(
   "src/lib/gurumi/records.ts",
   (id) => {
+    if (id === "./characters") return characters;
     if (id === "./similarity") return similarity;
     throw new Error(`Unexpected runtime import: ${id}`);
   },
@@ -99,6 +103,7 @@ const roundSession = compileTypeScript(
   (id) => {
     if (id === "server-only") return {};
     if (id === "node:crypto") return crypto;
+    if (id === "./characters") return characters;
     if (id === "./records") return records;
     throw new Error(`Unexpected runtime import: ${id}`);
   },
@@ -223,3 +228,105 @@ assert.throws(
 console.log(
   `Gurumi regression checks passed (max generic ellipse score: ${highestEllipseScore}).`,
 );
+
+// Every shipped image must build independently, including transparent backgrounds.
+function traceEdges(mask, size) {
+  const visited = new Set();
+  const strokes = [];
+  for (let seed = 0; seed < mask.length; seed++) {
+    if (!mask[seed] || visited.has(seed)) continue;
+    let cursor = seed;
+    const points = [];
+    while (cursor !== undefined) {
+      visited.add(cursor);
+      const x = cursor % size, y = Math.floor(cursor / size);
+      points.push({ x: x / size, y: y / size });
+      cursor = [-1, 0, 1].flatMap(dy => [-1, 0, 1].map(dx => ({ x: x + dx, y: y + dy })))
+        .filter(p => p.x >= 0 && p.x < size && p.y >= 0 && p.y < size)
+        .map(p => p.y * size + p.x).find(i => mask[i] && !visited.has(i));
+    }
+    if (points.length > 1) strokes.push({ points });
+  }
+  return strokes;
+}
+const modelMasks = new Set();
+const adaptiveModels = [];
+for (const character of characters.GURUMI_CHARACTERS) {
+  const { data, info } = await sharp(`public${characters.characterImage(character.id)}`)
+    .flatten({ background: "#ffffff" })
+    .resize(similarity.GURUMI_SCORE_GRID_SIZE, similarity.GURUMI_SCORE_GRID_SIZE, { fit: "fill", kernel: sharp.kernel.cubic })
+    .ensureAlpha(1).raw().toBuffer({ resolveWithObject: true });
+  const model = similarity.buildGurumiReferenceModel({ data: new Uint8ClampedArray(data), width: info.width, height: info.height }, "adaptive");
+  assert.ok(model.pixelCount > 100, `${character.id}: expected visible reference edges`);
+  modelMasks.add(crypto.createHash("sha256").update(model.mask).digest("hex"));
+  const traces = traceEdges(model.mask, info.width);
+  const matched = similarity.scoreDrawing(traces, model);
+  assert.ok(Number.isFinite(matched.score) && matched.raw > .5, `${character.id}: own contours must match (${matched.raw})`);
+  assert.deepEqual(Object.keys(matched.parts), [...similarity.ADAPTIVE_PART_IDS]);
+  assert.equal(similarity.scoreDrawing([], model).score, 0);
+  assert.ok(similarity.scoreDrawing(concentricEllipses(5, .38, .9), model).score <= 60, `${character.id}: generic loops must not score highly`);
+  adaptiveModels.push({ model, traces, matched });
+}
+assert.equal(modelMasks.size, 13, "All 13 characters must use different reference masks.");
+const architecture = adaptiveModels[1];
+const different = similarity.scoreDrawing(architecture.traces, adaptiveModels[12].model);
+assert.ok(architecture.matched.raw > different.raw + .1, "Architecture contours must score higher against Architecture than Women in Cloud.");
+assert.equal(records.isGurumiRoundSession(signedRound), true);
+assert.ok(characters.isGurumiCharacterId(signedRound.characterId));
+assert.equal(verifiedRound.characterId, signedRound.characterId);
+const [originalPayload] = signedRound.token.split(".");
+const tampered = Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(originalPayload, "base64url")), characterId: signedRound.characterId === "busan" ? "devops" : "busan" })).toString("base64url");
+assert.equal(roundSession.verifyGurumiRoundSession(`${tampered}.${signedRound.token.split(".")[1]}`, signedRound.id), false);
+const legacyPayload = Buffer.from(JSON.stringify({ id: signedRound.id, version: 1, issuedAt: Date.now(), expiresAt: Date.now() + 60_000 })).toString("base64url");
+const legacySignature = crypto.createHmac("sha256", process.env.GURUMI_ROUND_SECRET).update(`ausgcon-2026-gurumi-round:${legacyPayload}`).digest("base64url");
+assert.equal(roundSession.readGurumiRoundSession(`${legacyPayload}.${legacySignature}`, signedRound.id).characterId, undefined);
+console.log("KRUG checks passed: 13 image-specific models, contour discrimination, signed character IDs, and legacy round compatibility.");
+
+let scoredCharacter;
+let storedRecord;
+const scoresRoute = compileTypeScript("src/app/api/gurumi/scores/route.ts", (id) => {
+  if (id === "@/lib/gurumi/records") return records;
+  if (id === "@/lib/gurumi/server-score") return { scoreGurumiDrawing: async (_strokes, characterId) => {
+    scoredCharacter = characterId;
+    return similarity.scoreDrawing([], reference);
+  } };
+  if (id === "@/lib/gurumi/stroke-codec") return { decodeStrokes: () => ({ strokes: [], pointCount: 0 }) };
+  if (id === "@/lib/gurumi/round-session") return roundSession;
+  if (id === "@/lib/gurumi/storage") return {
+    findGurumiScore: async () => null, listGurumiScores: async () => [],
+    saveGurumiScore: async ({ record }) => { storedRecord = record; return record; },
+  };
+  throw new Error(`Unexpected import: ${id}`);
+});
+const submissionResponse = await scoresRoute.POST(new Request("https://example.com/api/gurumi/scores", {
+  method: "POST", headers: { "Content-Type": "application/json", "x-real-ip": "203.0.113.200" },
+  body: JSON.stringify({ id: signedRound.id, name: "구르미", roundToken: signedRound.token, strokes: "", characterId: "forged-target" }),
+}));
+assert.equal(submissionResponse.status, 201);
+assert.equal(scoredCharacter, signedRound.characterId, "Server scoring must use the signed target, ignoring a forged client target.");
+assert.equal(storedRecord.characterId, signedRound.characterId);
+console.log("Score API checks passed: server scoring and stored character match the signed round.");
+
+const serverScoring = compileTypeScript("src/lib/gurumi/server-score.ts", (id) => {
+  if (id === "server-only") return {};
+  if (id === "node:path") return { default: path };
+  if (id === "sharp") return { default: sharp };
+  if (id === "./similarity") return similarity;
+  if (id === "./characters") return characters;
+  throw new Error(`Unexpected import: ${id}`);
+});
+assert.equal((await serverScoring.scoreGurumiDrawing(architecture.traces, "architecture")).score, architecture.matched.score);
+await assert.rejects(serverScoring.scoreGurumiDrawing([], "../../unknown"), /Unknown Gurumi/);
+console.log("Server image loading checks passed: selected asset path, scoring parity, unknown target rejection.");
+
+const roundRoute = compileTypeScript("src/app/api/gurumi/round/route.ts", (id) => {
+  if (id === "@/lib/gurumi/round-session") return roundSession;
+  throw new Error(`Unexpected import: ${id}`);
+});
+assert.equal((await roundRoute.POST(new Request("https://example.com/api/gurumi/round", { method: "POST" }))).status, 409);
+const newRound = await roundRoute.POST(new Request("https://example.com/api/gurumi/round", {
+  method: "POST", headers: { "X-Gurumi-Client": "krug-v1", "x-real-ip": "203.0.113.202" },
+}));
+assert.equal(newRound.status, 201);
+assert.ok(records.isGurumiRoundSession(await newRound.json()));
+console.log("Round API checks passed: stale clients refresh; current clients receive a signed KRUG target.");
