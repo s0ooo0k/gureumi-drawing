@@ -174,8 +174,20 @@ function resultMessage(score: number) {
 
 function SketchbookDecor() {
   return <div className={styles.gridBackdrop} aria-hidden="true">
+    <svg className={styles.textureDefinitions} width="0" height="0"><defs>
+      <filter id="crayon-edge" x="-15%" y="-15%" width="130%" height="130%">
+        <feTurbulence type="fractalNoise" baseFrequency=".12" numOctaves="3" seed="8" result="grain" />
+        <feDisplacementMap in="SourceGraphic" in2="grain" scale="3" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </defs></svg>
     <div className={styles.spiralBinding}>{Array.from({ length: 18 }, (_, index) => <i key={index} />)}</div>
-    <svg className={styles.doodleStar} viewBox="0 0 100 100" fill="none"><path d="M50 8 60 36 90 37 66 55 74 85 50 67 25 85 33 55 9 37 40 36Z" stroke="currentColor" strokeWidth="4" strokeLinejoin="round"/><path d="m79 10 4-6m8 20 8-2M8 74l-6 4" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>
+    <svg className={styles.doodleStar} viewBox="0 0 100 100" fill="none"><g filter="url(#crayon-edge)"><path d="M49 9 61 35 90 38 65 56 73 85 49 67 24 84 32 54 9 36 39 37Z" fill="#e1ecff" stroke="currentColor" strokeWidth="4" strokeLinejoin="round"/><path d="m43 32 8-12-9 30 15-19-16 32 25-25-17 26 16-13M79 10l4-6m8 20 8-2M8 74l-6 4" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></g></svg>
+    <svg className={styles.doodleClouds} viewBox="0 0 240 130" fill="none"><g filter="url(#crayon-edge)" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 66C3 64 5 43 24 43 16 19 47 14 59 29 76 6 111 22 108 40 140 36 145 66 121 70 89 77 49 73 20 66Z" strokeWidth="4"/>
+      <path d="m24 51 18-23-14 33 29-34-19 37 34-39-24 40 39-36-25 38 35-29-19 32 28-23-13 23 23-16" strokeWidth="2.5"/>
+      <path d="M154 112c-19-4-17-22 1-25-1-18 22-25 32-10 17-17 37-2 32 13 23 7 16 24 1 25-24 4-48 2-66-3Z" strokeWidth="3"/>
+      <path d="m156 100 10-13-6 21 23-28-14 29 27-25-16 28 27-21-16 21 28-14-10 14" strokeWidth="2"/>
+    </g></svg>
     <svg className={styles.doodlePencil} viewBox="0 0 160 90" fill="none"><path d="m18 61 15-23 97-20 8 28-97 22Z" fill="#d8e9ff" stroke="currentColor" strokeWidth="3" strokeLinejoin="round"/><path d="m33 38 8 30m-23-7 11 2m10-10 93-20M13 78c23 8 39-12 65-2s40 0 61-5" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>
   </div>;
 }
@@ -726,9 +738,9 @@ export function GurumiGame() {
         <div className={styles.introLayout}>
           <section className={styles.introCopy}>
             <p className={styles.eyebrow}>AWS Community Day 2026 · SKETCHBOOK CLUB</p>
-            <h1>
-              DRAW
-              <strong>GURUMI</strong>
+            <h1 aria-label="DRAW GURUMI">
+              <span className={styles.titleWord} aria-hidden="true">{"DRAW".split("").map((letter, index) => <span key={index}>{letter}</span>)}</span>
+              <strong className={styles.titleWord} aria-hidden="true">{"GURUMI".split("").map((letter, index) => <span key={index}>{letter}</span>)}</strong>
             </h1>
             <p className={styles.introLead}>
               오늘은 어떤 구르미를 그릴까요?

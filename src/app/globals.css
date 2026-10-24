@@ -2,6 +2,14 @@
 @import "tailwindcss";
 
 @font-face {
+  font-family: "Cabin Sketch";
+  src: url("/fonts/CabinSketch-Bold.ttf") format("truetype");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 700;
+}
+
+@font-face {
   font-family: "Pretendard";
   src: url("/fonts/Pretendard-Regular.woff") format("woff");
   font-display: swap;
