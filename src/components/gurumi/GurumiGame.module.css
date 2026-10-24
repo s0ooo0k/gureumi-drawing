@@ -1593,6 +1593,6 @@
 @keyframes butterflySway { 0%, 100% { transform: translateY(0) rotate(-5deg); } 50% { transform: translateY(-8px) rotate(6deg); } }
 @keyframes crayonSway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(5deg); } }
 @media (prefers-reduced-motion: reduce) {
-  .previewSlide, .gridBackdrop[data-animated="true"] > svg > g { animation: none; }
+  .previewSlide, .gridBackdrop[data-animated="true"] > svg > g { animation: none !important; }
   .gridBackdrop[data-animated="true"] > svg:hover > g { scale: 1; }
 }
