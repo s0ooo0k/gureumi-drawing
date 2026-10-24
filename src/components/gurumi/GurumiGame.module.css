@@ -1656,3 +1656,4 @@
   .fullRankScore b { font-size: 1.7rem; }
   .fullRankingFooter { padding: 10px 12px; }
 }
+.fullRankingDialog { position: fixed; inset: 50% auto auto 50%; margin: 0; transform: translate(-50%, -50%); }
