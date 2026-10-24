@@ -1359,7 +1359,7 @@
 .introCopy h1::after { content: ""; position: absolute; left: 0; right: 2%; bottom: -.02em; height: .18em; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 25' fill='none'%3E%3Cpath d='M5 13Q108 1 392 9M12 18Q175 6 382 16M24 22Q212 13 357 20' stroke='%236e9bd4' stroke-width='3' stroke-linecap='round' opacity='.65'/%3E%3C/svg%3E") left center / 100% 100% no-repeat; }
 .doodleStar { width: 82px; height: 82px; color: #4c78bb; opacity: .7; transform: rotate(13deg); }
 .doodleClouds { position: absolute; top: 95px; right: 18px; width: clamp(130px, 14vw, 210px); color: #7ba3d3; opacity: .32; transform: rotate(-8deg); }
-.doodlePencil { filter: url(#crayon-edge); }
+
 .ruleRow span { border-radius: 41% 45% 39% 43% / 44% 38% 46% 41%; }
 .ruleRow span:nth-child(2) { transform: rotate(1deg); }
 .ruleRow span:nth-child(3) { transform: rotate(-1deg); }
@@ -1657,3 +1657,16 @@
   .fullRankingFooter { padding: 10px 12px; }
 }
 .fullRankingDialog { position: fixed; inset: 50% auto auto 50%; margin: 0; transform: translate(-50%, -50%); }
+
+/* Keep the drawing-book surroundings when introducing the chosen friend. */
+.revealOverlay { isolation: isolate; overflow-y: auto; background: #fff; padding: 32px 24px; }
+.revealCard { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: min(560px, 100%); margin: auto; padding: 26px 28px 30px; background: #fffffff5; }
+.revealCard::before { content: ""; position: absolute; z-index: -1; inset: 0; background: url('/assets/sketchbook/pencil-frame.svg') center / 100% 100% no-repeat; pointer-events: none; }
+.revealCard::after { content: ""; position: absolute; top: -10px; left: calc(50% - 49px); width: 98px; height: 25px; background: #f0d765bc; transform: rotate(-5deg); clip-path: polygon(2% 5%, 98% 0, 96% 94%, 0 100%, 3% 70%, 0 48%); }
+.revealCard .revealEyebrow { font-family: var(--font-drawing); font-size: 1.5rem; font-weight: 700; letter-spacing: 0; color: #6d805e; }
+.revealCard img { width: min(300px, 44svh, 70vw); margin: 8px 0 4px; padding: 0; background: transparent; border: 0; box-shadow: none; transform: rotate(-2deg); }
+.revealClub { margin: 0; font-family: "Cabin Sketch", var(--font-latin); font-size: 1.05rem; color: #658368; }
+.revealCard h2 { margin-top: 3px; font-size: clamp(2rem, 5vw, 3.3rem); line-height: 1.25; }
+.revealCard .groupDescription { max-width: 420px; margin-top: 12px; color: #52684f; font-size: 1rem; }
+.revealCard small { display: block; margin-top: 20px; padding: 6px 14px; border-radius: 8% 6% 9% 5%; background: #faf3d6; color: #827344; font-size: .78rem; }
+@media (max-width: 560px) { .revealOverlay { padding: 24px 18px; } .revealCard { padding: 25px 20px; } .revealCard .revealEyebrow { font-size: 1.3rem; } .revealCard .groupDescription { font-size: .9rem; } }

@@ -173,37 +173,38 @@ function resultMessage(score: number) {
 }
 
 function SketchbookDecor({ interactive = false }: { interactive?: boolean }) {
+  const crayonFilterId = `crayon-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   return <div className={styles.gridBackdrop} data-animated={interactive} aria-hidden="true">
     {interactive && <><div className={styles.marginDrawingLeft} /><div className={styles.marginDrawingRight} /></>}
     <svg className={styles.textureDefinitions} width="0" height="0"><defs>
-      <filter id="crayon-edge" x="-15%" y="-15%" width="130%" height="130%">
+      <filter id={crayonFilterId} x="-15%" y="-15%" width="130%" height="130%">
         <feTurbulence type="fractalNoise" baseFrequency=".12" numOctaves="3" seed="8" result="grain" />
         <feDisplacementMap in="SourceGraphic" in2="grain" scale="3" xChannelSelector="R" yChannelSelector="G" />
       </filter>
     </defs></svg>
-    <svg className={styles.doodleSun} viewBox="0 0 160 160" fill="none"><g filter="url(#crayon-edge)" stroke="#f4bc00" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={styles.doodleSun} viewBox="0 0 160 160" fill="none"><g filter={`url(#${crayonFilterId})`} stroke="#f4bc00" strokeLinecap="round" strokeLinejoin="round">
       <path d="M51 58c-15 27 9 58 37 49 30-9 31-46 8-58-25-13-42-1-45 22 0 26 33 40 48 16" strokeWidth="5"/>
       <path d="m61 65 12-12-15 30 30-32-28 44 39-36-26 42 32-29-17 29" strokeWidth="5"/>
       <path d="m76 31-4-21m32 29 13-22m6 40 25-9m-20 34 23 4m-37 20 15 18m-40-6 4 28m-30-32-12 24m-1-47-24 11m21-34L8 67m36-17L26 30" strokeWidth="5"/>
     </g></svg>
-    <svg className={styles.doodleRainbow} viewBox="0 0 180 120" fill="none"><g filter="url(#crayon-edge)" strokeLinecap="round">
+    <svg className={styles.doodleRainbow} viewBox="0 0 180 120" fill="none"><g filter={`url(#${crayonFilterId})`} strokeLinecap="round">
       <path d="M20 94C22 1 151 2 159 94" stroke="#f0919e" strokeWidth="9"/>
       <path d="M34 94C38 22 139 23 145 94" stroke="#f4c64f" strokeWidth="8"/>
       <path d="M48 94C54 43 124 43 131 94" stroke="#63aa79" strokeWidth="8"/>
       <path d="M62 94C67 62 111 61 117 94" stroke="#6da2d8" strokeWidth="7"/>
       <path d="M8 102c-10-13 4-23 15-18 4-14 24-13 28 2 18-4 26 18 9 22-18 4-37 1-52-6Zm114 3c-11-14 1-25 14-20 5-15 23-14 29 0 15-3 22 18 6 23-17 4-34 2-49-3Z" stroke="#75a5bd" strokeWidth="3" fill="#fff"/>
     </g></svg>
-    <svg className={styles.doodleHearts} viewBox="0 0 100 160" fill="none"><g filter="url(#crayon-edge)" stroke="#d57e98" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={styles.doodleHearts} viewBox="0 0 100 160" fill="none"><g filter={`url(#${crayonFilterId})`} stroke="#d57e98" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M49 67C-5 37 14 7 37 26 52-2 85 22 49 67Zm-22-31 9 10-6-15 16 25-5-22 12 14 6-17M65 139c-31-20-21-38-7-26 13-19 32-1 7 26Z"/>
     </g></svg>
-    <svg className={styles.doodleButterfly} viewBox="0 0 150 120" fill="none"><g filter="url(#crayon-edge)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={styles.doodleButterfly} viewBox="0 0 150 120" fill="none"><g filter={`url(#${crayonFilterId})`} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
       <path d="M75 54C4-16-1 85 61 73 4 114 85 137 75 54Zm5 4c59-67 87 11 17 18 56 18-7 65-17-18Z" stroke="#d489b3" fill="#f7e2ed"/>
       <path d="m24 35 24 22-20-5 32 9m43-19 14 9-19 9m-61 28 20 6m47 0 12-7" stroke="#c97ba8"/>
       <path d="m75 53 11 46M77 51C58 12 55 24 57 29m21 22c10-37 24-27 21-21" stroke="#6f805b"/>
     </g></svg>
     <div className={styles.spiralBinding}>{Array.from({ length: 18 }, (_, index) => <i key={index} />)}</div>
-    <svg className={styles.doodleStar} viewBox="0 0 100 100" fill="none"><g filter="url(#crayon-edge)"><path d="M49 9 61 35 90 38 65 56 73 85 49 67 24 84 32 54 9 36 39 37Z" fill="#c8e4ff" stroke="currentColor" strokeWidth="4" strokeLinejoin="round"/><path d="m43 32 8-12-9 30 15-19-16 32 25-25-17 26 16-13M79 10l4-6m8 20 8-2M8 74l-6 4" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></g></svg>
-    <svg className={styles.doodleClouds} viewBox="0 0 240 130" fill="none"><g filter="url(#crayon-edge)" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={styles.doodleStar} viewBox="0 0 100 100" fill="none"><g filter={`url(#${crayonFilterId})`}><path d="M49 9 61 35 90 38 65 56 73 85 49 67 24 84 32 54 9 36 39 37Z" fill="#c8e4ff" stroke="currentColor" strokeWidth="4" strokeLinejoin="round"/><path d="m43 32 8-12-9 30 15-19-16 32 25-25-17 26 16-13M79 10l4-6m8 20 8-2M8 74l-6 4" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></g></svg>
+    <svg className={styles.doodleClouds} viewBox="0 0 240 130" fill="none"><g filter={`url(#${crayonFilterId})`} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
       <path d="M20 66C3 64 5 43 24 43 16 19 47 14 59 29 76 6 111 22 108 40 140 36 145 66 121 70 89 77 49 73 20 66Z" strokeWidth="4"/>
       <path d="m24 51 18-23-14 33 29-34-19 37 34-39-24 40 39-36-25 38 35-29-19 32 28-23-13 23 23-16" strokeWidth="2.5"/>
       <path d="M154 112c-19-4-17-22 1-25-1-18 22-25 32-10 17-17 37-2 32 13 23 7 16 24 1 25-24 4-48 2-66-3Z" strokeWidth="3"/>
@@ -910,12 +911,15 @@ export function GurumiGame() {
 
           {phase === "reveal" && (
             <div className={styles.revealOverlay} role="status" aria-live="polite">
-              <span className={styles.revealEyebrow}>MEET YOUR GURUMI</span>
-              <Image src={referenceImage} alt={`${character.group} 구르미`} width={260} height={260} priority />
-              <p>AWSKRUG</p>
-              <h2>{character.group}</h2>
-              <p className={styles.groupDescription}>{character.description}</p>
-              <small>잠시 후 30초 그리기가 시작됩니다</small>
+              <SketchbookDecor interactive />
+              <div className={styles.revealCard}>
+                <span className={styles.revealEyebrow}>이번에 만날 구르미는…</span>
+                <Image src={referenceImage} alt={`${character.group} 구르미`} width={320} height={320} priority />
+                <p className={styles.revealClub}>AWSKRUG</p>
+                <h2>{character.group}</h2>
+                <p className={styles.groupDescription}>{character.description}</p>
+                <small>잠시 후 30초 그리기가 시작됩니다</small>
+              </div>
             </div>
           )}
 
