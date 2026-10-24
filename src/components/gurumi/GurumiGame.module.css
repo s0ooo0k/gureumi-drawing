@@ -1571,3 +1571,28 @@
   .doodleHearts { right: -13px; width: 40px; opacity: .45; }
   .doodleButterfly { left: 10%; bottom: 124px; width: 78px; height: 64px; }
 }
+
+/* A single rotating friend, with quiet motion in the paper margins. */
+.previewSlide { animation: previewArrive 650ms ease both; }
+.previewSlide .characterImage { aspect-ratio: 1; object-fit: contain; }
+.previewSlide .featuredGroup { min-height: 100px; padding-top: 10px; }
+.previewControls { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px 14px; color: #59705f; }
+.previewControls button { display: inline-grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; color: #496851; font-size: 1.3rem; cursor: pointer; border-radius: 45% 39% 46% 41%; transition: background 180ms ease, transform 180ms ease; }
+.previewControls button:hover { background: #fff0ad; transform: rotate(-6deg); }
+.previewControls button:focus-visible { outline: 2px solid #47785a; outline-offset: 2px; }
+.previewControls > span { min-width: 58px; text-align: center; font-family: "Cabin Sketch", var(--font-latin); font-size: 1rem; }
+.gridBackdrop[data-animated="true"] > svg:not(.textureDefinitions) { pointer-events: auto; }
+.gridBackdrop[data-animated="true"] > svg > g { transform-box: fill-box; transform-origin: center; transition: scale 250ms ease; }
+.gridBackdrop[data-animated="true"] .doodleClouds > g { animation: cloudDrift 9s ease-in-out infinite; }
+.gridBackdrop[data-animated="true"] .doodleButterfly > g { animation: butterflySway 5s ease-in-out infinite; }
+.gridBackdrop[data-animated="true"] .doodleStar > g { animation: crayonSway 7s ease-in-out infinite; }
+.gridBackdrop[data-animated="true"] .doodleHearts > g { animation: cloudDrift 8s ease-in-out infinite reverse; }
+.gridBackdrop[data-animated="true"] > svg:hover > g { scale: 1.08; animation-play-state: paused; }
+@keyframes previewArrive { from { opacity: 0; transform: translateY(10px) rotate(-2deg); } to { opacity: 1; transform: translateY(0) rotate(0); } }
+@keyframes cloudDrift { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(9px, -4px); } }
+@keyframes butterflySway { 0%, 100% { transform: translateY(0) rotate(-5deg); } 50% { transform: translateY(-8px) rotate(6deg); } }
+@keyframes crayonSway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(5deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .previewSlide, .gridBackdrop[data-animated="true"] > svg > g { animation: none; }
+  .gridBackdrop[data-animated="true"] > svg:hover > g { scale: 1; }
+}

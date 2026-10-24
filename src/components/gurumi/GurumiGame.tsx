@@ -172,8 +172,8 @@ function resultMessage(score: number) {
   return "30초의 용기가 멋져요!";
 }
 
-function SketchbookDecor() {
-  return <div className={styles.gridBackdrop} aria-hidden="true">
+function SketchbookDecor({ interactive = false }: { interactive?: boolean }) {
+  return <div className={styles.gridBackdrop} data-animated={interactive} aria-hidden="true">
     <svg className={styles.textureDefinitions} width="0" height="0"><defs>
       <filter id="crayon-edge" x="-15%" y="-15%" width="130%" height="130%">
         <feTurbulence type="fractalNoise" baseFrequency=".12" numOctaves="3" seed="8" result="grain" />
@@ -220,6 +220,42 @@ function KioskHeader() {
       </Link>
     </header>
   );
+}
+
+function CharacterPreview() {
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setPaused(preference.matches);
+    update();
+    preference.addEventListener("change", update);
+    return () => preference.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    if (paused) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") setIndex(value => (value + 1) % GURUMI_CHARACTERS.length);
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [paused]);
+  const character = GURUMI_CHARACTERS[index];
+  const move = (offset: number) => {
+    setPaused(true);
+    setIndex(value => (value + offset + GURUMI_CHARACTERS.length) % GURUMI_CHARACTERS.length);
+  };
+  return <div className={styles.characterCard}>
+    <div className={styles.previewSlide} key={character.id} aria-live={paused ? "polite" : "off"}>
+      <Image alt={`${character.group} 구르미`} className={styles.characterImage} height={1254} width={1254} priority={index === 0} sizes="(max-width: 760px) 85vw, 40vw" src={characterImage(character.id)} />
+      <div className={styles.featuredGroup}><b>{character.group}</b><p>{character.description}</p></div>
+    </div>
+    <div className={styles.previewControls}>
+      <button type="button" aria-label="이전 구르미" onClick={() => move(-1)}>←</button>
+      <span>{String(index + 1).padStart(2, "0")} / {GURUMI_CHARACTERS.length}</span>
+      <button type="button" aria-label={paused ? "구르미 자동 넘기기 재생" : "구르미 자동 넘기기 일시정지"} aria-pressed={paused} onClick={() => setPaused(value => !value)}>{paused ? "▷" : "Ⅱ"}</button>
+      <button type="button" aria-label="다음 구르미" onClick={() => move(1)}>→</button>
+    </div>
+  </div>;
 }
 
 const STORAGE_STATUS_LABEL: Record<StorageMode, string> = {
@@ -749,7 +785,7 @@ export function GurumiGame() {
   if (phase === "intro") {
     return (
       <main className={styles.page}>
-        <SketchbookDecor />
+        <SketchbookDecor interactive />
         <KioskHeader />
         <div className={styles.introLayout}>
           <section className={styles.introCopy}>
@@ -799,24 +835,7 @@ export function GurumiGame() {
           </section>
 
           <section className={styles.introVisual} aria-label="그리기 기준 이미지">
-            <div className={styles.characterCard}>
-              <Image
-                alt={`${character.group} 구르미`}
-                className={styles.characterImage}
-                height={1254}
-                priority
-                sizes="(max-width: 900px) 82vw, 38vw"
-                src={referenceImage}
-                width={1254}
-              />
-              <div className={styles.featuredGroup}>
-                <b>{character.group}</b>
-                <p>{character.description}</p>
-              </div>
-              <div className={styles.characterGallery} aria-label="13개 AWSKRUG 소모임 구르미">
-                {GURUMI_CHARACTERS.map((item) => <Image key={item.id} src={characterImage(item.id)} alt={item.group} title={item.group} width={72} height={72} />)}
-              </div>
-            </div>
+            <CharacterPreview />
           </section>
 
           <aside className={styles.introRanking}>
