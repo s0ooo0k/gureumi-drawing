@@ -236,7 +236,7 @@ function CharacterPreview() {
     if (paused) return;
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") setIndex(value => (value + 1) % GURUMI_CHARACTERS.length);
-    }, 4000);
+    }, 3000);
     return () => window.clearInterval(timer);
   }, [paused]);
   const character = GURUMI_CHARACTERS[index];
