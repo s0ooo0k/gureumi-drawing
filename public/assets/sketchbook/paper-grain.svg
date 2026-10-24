@@ -1,1 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="p"><feTurbulence type="fractalNoise" baseFrequency=".82" numOctaves="3" stitchTiles="stitch"/></filter><path d="M0 0h180v180H0z" fill="#59738c" filter="url(#p)" opacity=".12"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="p"><feTurbulence type="fractalNoise" baseFrequency=".82" numOctaves="3" stitchTiles="stitch"/></filter><path d="M0 0h180v180H0z" fill="#59738c" filter="url(#p)" opacity=".045"/></svg>

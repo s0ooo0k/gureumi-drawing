@@ -1507,3 +1507,59 @@
   .ruleRow { gap: 3px; }
   .ruleRow span { font-size: .95rem; padding-inline: 4px; }
 }
+
+/* Bright white paper and saturated crayon frames. */
+.page { background: #fff; --gurumi-paper: #fff; --gurumi-blue: #1769db; --gurumi-ink: #163559; --gurumi-lime-ink: #1769db; }
+.gridBackdrop { background-color: #fff; }
+.gridBackdrop::before { opacity: 1; }
+.introCopy h1 strong { color: #176fe2; }
+.doodleClouds { color: #168ee2; opacity: .8; }
+.doodleStar { color: #1769dc; opacity: .95; }
+.doodleSun { opacity: 1; }
+.doodlePencil { color: #1769dc; opacity: .9; }
+.eyebrow { color: #154f9b; background-image: linear-gradient(transparent 47%, #ffd329b3 47% 88%, transparent 88%); }
+.boothId { border-color: #1769db; background-color: #e5f2ff; }
+.characterCard, .leaderboard, .referencePanel, .canvasPanel, .scoreCard, .fullRankingBoard {
+  position: relative; border: 5px solid transparent; border-radius: 0; box-shadow: none;
+}
+.characterCard::after, .leaderboard::after, .referencePanel::after, .canvasPanel::after, .scoreCard::after, .fullRankingBoard::after {
+  content: ""; position: absolute; z-index: 4; pointer-events: none; inset: -5px;
+  background: url('/assets/sketchbook/blue-frame.svg') center / 100% 100% no-repeat;
+}
+.characterCard { background-color: #f0f7ff; }
+.characterCard::before { background-color: #ffdb43d9; }
+.leaderboard, .referencePanel, .canvasPanel { background-color: #fff; }
+.panelHeading, .leaderboardHeading { background-color: #dceeff; color: #1554a6; border-bottom-color: #3d89dc; }
+.referenceDescription { background-color: #f3f9ff; color: #28588b; }
+.featuredGroup b, .characterLabel, .characterLabel span, .characterLabel b { color: #145bb7; }
+.ruleRow b { border-color: #1d6ed7; background: #d0e8ff; color: #1450a1; }
+.ruleRow span:nth-child(2) b { border-color: #d3a400; background: #ffe257; color: #775b00; }
+.ruleRow span:nth-child(3) b { border-color: #13974d; background: #b4ecb9; color: #106533; }
+.inputRow input { background: #fff; border-color: #236bc7; box-shadow: 2px 2px 0 #fff, 3px 3px 0 #236bc7; }
+.inputRow button, .scoreCard > button { border-color: #1455b2; background-color: #2778e6; color: #fff; box-shadow: 2px 3px 0 #124f9c; }
+.inputRow button:disabled { background-color: #daeaff; color: #50749f; border-color: #86addc; }
+.canvasActions button { border-color: #2475d9; background-color: #fff; color: #1859af; }
+.leaderboardHeading > span { color: #087534; border-color: #22a354; background-color: #d6f5df; }
+.rankList .highlightedRank { background-color: #ffe263; color: #163559; }
+.scoreCard { background-color: #e3f1ff; }
+.resultSection { grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr); align-items: start; gap: 22px; }
+.resultSection .rankList { display: block; padding: 6px 12px; }
+.resultSection .rankList li { grid-template-columns: 32px minmax(0, 1fr) auto; border-right: 0; border-bottom: 1px dashed #b3cdea; gap: 12px; }
+.resultSection .rankList li:last-child { border-bottom: 0; }
+.scoreCard { display: grid; grid-template-columns: 100px minmax(0, 1fr); grid-template-rows: auto auto auto auto; gap: 12px 20px; padding: 25px; }
+.scoreCard > p:first-child { grid-column: 1 / -1; grid-row: 1; }
+.scoreValue { grid-column: 1; grid-row: 2 / span 2; }
+.scoreValue strong { font-family: "Cabin Sketch", var(--font-latin); color: #1769db; }
+.scoreCard h2 { grid-column: 2; grid-row: 2; align-self: center; font-size: clamp(1.5rem, 2.3vw, 2rem); line-height: 1.35; overflow-wrap: break-word; }
+.scoreCard .rankCopy { grid-column: 2; grid-row: 3; margin: 0; line-height: 1.65; }
+.scoreCard > button { grid-column: 1 / -1; grid-row: 4; width: 100%; margin-top: 8px; }
+.revealOverlay { background-color: #fff; }
+.revealOverlay img { background-color: #e6f2ff; border-color: #1769db; }
+@media (max-width: 1050px) {
+  .resultSection { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .scoreCard { grid-template-columns: 80px minmax(0, 1fr); gap: 12px; padding: 22px 18px; }
+  .scoreCard h2 { margin-top: 0; font-size: 1.65rem; }
+  .scoreCard .rankCopy { margin-top: 0; }
+}
