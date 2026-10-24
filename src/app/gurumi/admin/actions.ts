@@ -32,7 +32,7 @@ function unauthorizedResult(): GurumiAdminActionResult {
 }
 
 async function currentRecords() {
-  return listGurumiScores();
+  return listGurumiScores(undefined, { allVersions: true });
 }
 
 export async function loginGurumiAdmin(password: string): Promise<GurumiAdminActionResult> {

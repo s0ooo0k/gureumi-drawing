@@ -10,12 +10,12 @@
   padding: 24px clamp(20px, 4vw, 72px) 12px;
   overflow: auto;
   color: #111418;
-  background: #f1f2ee;
+  background: #f4f8fd;
   font-family: var(--font-korean);
 }
 
 .dialog[open] { display: flex; flex-direction: column; }
-.dialog::backdrop { background: #f1f2ee; }
+.dialog::backdrop { background: #f4f8fd; }
 .header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid #d5d9cd; }
 .header > span { font-weight: 700; font-size: 15px; }
 .header b { margin-left: 20px; color: #527900; font-size: 12px; letter-spacing: .12em; }
@@ -41,7 +41,7 @@
 .blankNote { position: absolute; top: 45%; color: #697078; }
 .controls { display: flex; flex-shrink: 0; justify-content: center; align-items: center; gap: 24px; padding-top: 12px; border-top: 1px solid #d5d9cd; }
 .controls > button { min-width: 150px; }
-.controls > button:last-child { background: #b7f500; border-color: #a5d918; }
+.controls > button:last-child { background: #cce2ff; border-color: #a5d918; }
 .controls label { display: flex; align-items: center; gap: 12px; font-size: 13px; color: #697078; }
 .hint { margin: 8px 0 0; text-align: center; color: #697078; font-size: 11px; }
 

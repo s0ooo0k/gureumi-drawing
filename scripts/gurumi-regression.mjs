@@ -249,6 +249,23 @@ function traceEdges(mask, size) {
   }
   return strokes;
 }
+const hatch = Array.from({ length: 17 }, (_, index) => ({ points: [
+  { x: .1, y: .1 + index * .05 }, { x: .9, y: .1 + index * .05 },
+] }));
+const spiral = [{ points: Array.from({ length: 901 }, (_, index) => {
+  const angle = index / 900 * Math.PI * 14, radius = .02 + .43 * index / 900;
+  return { x: .5 + radius * Math.cos(angle), y: .5 + radius * Math.sin(angle) };
+}) }];
+let randomSeed = 42;
+const seededRandom = () => { randomSeed = (Math.imul(randomSeed, 1664525) + 1013904223) >>> 0; return randomSeed / 2 ** 32; };
+const scribble = Array.from({ length: 18 }, () => ({ points: Array.from({ length: 7 }, () => ({
+  x: .1 + .8 * seededRandom(), y: .1 + .8 * seededRandom(),
+})) }));
+const cross = [
+  { points: [{ x: .15, y: .15 }, { x: .85, y: .85 }] },
+  { points: [{ x: .85, y: .15 }, { x: .15, y: .85 }] },
+];
+const mapDrawing = (strokes, transform) => strokes.map(stroke => ({ points: stroke.points.map(transform) }));
 const modelMasks = new Set();
 const adaptiveModels = [];
 for (const character of characters.GURUMI_CHARACTERS) {
@@ -261,12 +278,27 @@ for (const character of characters.GURUMI_CHARACTERS) {
   modelMasks.add(crypto.createHash("sha256").update(model.mask).digest("hex"));
   const traces = traceEdges(model.mask, info.width);
   const matched = similarity.scoreDrawing(traces, model);
-  assert.ok(Number.isFinite(matched.score) && matched.raw > .5, `${character.id}: own contours must match (${matched.raw})`);
+  assert.ok(Number.isFinite(matched.score) && matched.score >= 90, `${character.id}: faithful contours must score at least 90 (got ${matched.score})`);
+  const coarse = traces.map(stroke => ({ points: stroke.points.filter((_, index) => index % 3 === 0 || index === stroke.points.length - 1) }));
+  assert.ok(Math.abs(similarity.scoreDrawing(coarse, model).score - matched.score) <= 8, `${character.id}: sampling rate must not change the result materially`);
+  const jitter = mapDrawing(coarse, (point, index) => ({ x: point.x + Math.sin(index * 1.9) * .012, y: point.y + Math.cos(index * 1.3) * .012 }));
+  assert.ok(similarity.scoreDrawing(jitter, model).score >= 80, `${character.id}: mild hand tremor must retain a strong match`);
+  const scaled = mapDrawing(traces, point => ({ x: .25 + point.x * .5, y: .25 + point.y * .5 }));
+  assert.ok(Math.abs(similarity.scoreDrawing(scaled, model).score - matched.score) <= 6, `${character.id}: drawing size must not determine the score`);
+  assert.ok(Math.abs(similarity.scoreDrawing([...traces, ...traces], model).score - matched.score) <= 2, `${character.id}: retracing must neither boost nor destroy a match`);
+  const partial = traces.map(stroke => ({ points: stroke.points.filter(point => point.x < .4) })).filter(stroke => stroke.points.length > 1);
+  const partialScore = similarity.scoreDrawing(partial, model).score;
+  assert.ok(partialScore > 0 && partialScore < 35, `${character.id}: an accurate fragment receives partial credit (got ${partialScore})`);
+  for (const [label, drawing] of Object.entries({ hatch, spiral, scribble, cross })) {
+    const score = similarity.scoreDrawing(drawing, model).score;
+    assert.ok(score <= 45, `${character.id}: ${label} must not receive a high score (got ${score})`);
+  }
   assert.deepEqual(Object.keys(matched.parts), [...similarity.ADAPTIVE_PART_IDS]);
   assert.equal(similarity.scoreDrawing([], model).score, 0);
   assert.ok(similarity.scoreDrawing(concentricEllipses(5, .38, .9), model).score <= 60, `${character.id}: generic loops must not score highly`);
   adaptiveModels.push({ model, traces, matched });
 }
+assert.ok(Math.max(...adaptiveModels.map(item => item.matched.score)) - Math.min(...adaptiveModels.map(item => item.matched.score)) <= 8, "Faithful contour scores must remain comparable across all 13 characters.");
 assert.equal(modelMasks.size, 13, "All 13 characters must use different reference masks.");
 const architecture = adaptiveModels[1];
 const different = similarity.scoreDrawing(architecture.traces, adaptiveModels[12].model);
@@ -280,7 +312,7 @@ assert.equal(roundSession.verifyGurumiRoundSession(`${tampered}.${signedRound.to
 const legacyPayload = Buffer.from(JSON.stringify({ id: signedRound.id, version: 1, issuedAt: Date.now(), expiresAt: Date.now() + 60_000 })).toString("base64url");
 const legacySignature = crypto.createHmac("sha256", process.env.GURUMI_ROUND_SECRET).update(`ausgcon-2026-gurumi-round:${legacyPayload}`).digest("base64url");
 assert.equal(roundSession.readGurumiRoundSession(`${legacyPayload}.${legacySignature}`, signedRound.id).characterId, undefined);
-console.log("KRUG checks passed: 13 image-specific models, contour discrimination, signed character IDs, and legacy round compatibility.");
+console.log("KRUG checks passed: 13 image-specific models, faithful/noisy/sparse/size/retracing/scribble fixtures, signed targets, and legacy compatibility.");
 
 let scoredCharacter;
 let storedRecord;

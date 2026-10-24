@@ -3,7 +3,7 @@ import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getGurumiDatabaseConfig } from "./database-config";
 import { GURUMI_LEADERBOARD_LIMIT, isScoreRecord, type ScoreRecord } from "./records";
-import type { SimilarityScore } from "./similarity";
+import { GURUMI_SCORE_VERSION, type SimilarityScore } from "./similarity";
 
 const TABLE_NAME = "gurumi_scores";
 const SCORE_COLUMNS = "id,name,score,calibrated,raw,semantic,global_score,density_ratio,overdraw_efficiency,orientation_entropy,loop_monotony,part_scores,created_at,score_version,character_id";
@@ -33,12 +33,13 @@ function recordFromRow(row: Record<string, unknown>): ScoreRecord {
   return candidate;
 }
 
-export async function listGurumiScores(limit = GURUMI_LEADERBOARD_LIMIT) {
+export async function listGurumiScores(limit = GURUMI_LEADERBOARD_LIMIT, { allVersions = false } = {}) {
   const safeLimit = Number.isFinite(limit)
     ? Math.min(GURUMI_LEADERBOARD_LIMIT, Math.max(1, Math.trunc(limit)))
     : GURUMI_LEADERBOARD_LIMIT;
-  const { data, error } = await getClient().from(TABLE_NAME).select(SCORE_COLUMNS)
-    .order("score", { ascending: false }).order("calibrated", { ascending: false })
+  let query = getClient().from(TABLE_NAME).select(SCORE_COLUMNS);
+  if (!allVersions) query = query.eq("score_version", GURUMI_SCORE_VERSION);
+  const { data, error } = await query.order("score", { ascending: false }).order("calibrated", { ascending: false })
     .order("raw", { ascending: false }).order("created_at", { ascending: true }).limit(safeLimit);
   if (error) throw error;
   return (data ?? []).map(recordFromRow);

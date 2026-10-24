@@ -30,7 +30,7 @@ let responseData = [fixture];
 let fail = false;
 const requests = [];
 const storage = compile("src/lib/gurumi/storage.ts", {
-  "server-only": {}, "./records": records,
+  "server-only": {}, "./records": records, "./similarity": similarity,
   "./database-config": { getGurumiDatabaseConfig: () => ({ url: "https://test.supabase.co", key: "server-secret" }) },
   "@supabase/supabase-js": { createClient: (url, key, options) => createClient(url, key, {
     ...options, global: { fetch: async (url, init) => {
@@ -44,6 +44,9 @@ const storage = compile("src/lib/gurumi/storage.ts", {
 assert.deepEqual(await storage.listGurumiScores(10), [record]);
 assert.equal(requests.at(-1).url.searchParams.get("order"), "score.desc,calibrated.desc,raw.desc,created_at.asc");
 assert.equal(requests.at(-1).url.searchParams.get("limit"), "10");
+assert.equal(requests.at(-1).url.searchParams.get("score_version"), `eq.${similarity.GURUMI_SCORE_VERSION}`);
+await storage.listGurumiScores(10, { allVersions: true });
+assert.equal(requests.at(-1).url.searchParams.has("score_version"), false);
 assert.ok(!requests.at(-1).url.searchParams.get("select").includes("strokes"));
 assert.equal(new Headers(requests.at(-1).headers).get("apikey"), "server-secret");
 responseData = fixture;

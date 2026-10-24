@@ -296,7 +296,7 @@ export function GurumiAdmin({
                             value={draft.score}
                           />
                         </td>
-                        <td><small>{characterLabel(record.characterId)}</small><br />{formatRecordedAt(record.createdAt)}</td>
+                        <td><small>{characterLabel(record.characterId)} · {record.scoreVersion}</small><br />{formatRecordedAt(record.createdAt)}</td>
                         <td><code title={record.id}>{record.id.slice(0, 8)}</code></td>
                         <td>
                           <div className={styles.rowActions}>

@@ -8,6 +8,7 @@ import {
   buildGurumiReferenceModel,
   ADAPTIVE_PART_IDS,
   GURUMI_SCORE_GRID_SIZE,
+  GURUMI_SCORE_VERSION,
   scoreDrawing,
   type GurumiReferenceModel,
 } from "@/lib/gurumi/similarity";
@@ -73,7 +74,7 @@ function readCachedRecords() {
     if (!stored) return [];
     const parsed: unknown = JSON.parse(stored);
     return Array.isArray(parsed)
-      ? sortRecords(parsed.filter(isScoreRecord)).slice(0, GURUMI_LEADERBOARD_LIMIT)
+      ? sortRecords(parsed.filter(isScoreRecord).filter(record => record.scoreVersion === GURUMI_SCORE_VERSION)).slice(0, GURUMI_LEADERBOARD_LIMIT)
       : [];
   } catch {
     return [];
@@ -84,7 +85,7 @@ function mergeRecords(serverRecords: ScoreRecord[], pendingScores: PendingScore[
   const recordsById = new Map<string, ScoreRecord>();
   for (const pending of pendingScores) recordsById.set(pending.record.id, pending.record);
   for (const record of serverRecords) recordsById.set(record.id, record);
-  return sortRecords([...recordsById.values()]).slice(0, GURUMI_LEADERBOARD_LIMIT);
+  return sortRecords([...recordsById.values()].filter(record => record.scoreVersion === GURUMI_SCORE_VERSION)).slice(0, GURUMI_LEADERBOARD_LIMIT);
 }
 
 async function fetchJsonWithTimeout(input: RequestInfo | URL, init?: RequestInit) {
@@ -169,6 +170,14 @@ function resultMessage(score: number) {
   if (score >= 55) return "제법 닮았구름!";
   if (score >= 30) return "상상력이 피어났구름!";
   return "30초의 용기가 멋져요!";
+}
+
+function SketchbookDecor() {
+  return <div className={styles.gridBackdrop} aria-hidden="true">
+    <div className={styles.spiralBinding}>{Array.from({ length: 18 }, (_, index) => <i key={index} />)}</div>
+    <svg className={styles.doodleStar} viewBox="0 0 100 100" fill="none"><path d="M50 8 60 36 90 37 66 55 74 85 50 67 25 85 33 55 9 37 40 36Z" stroke="currentColor" strokeWidth="4" strokeLinejoin="round"/><path d="m79 10 4-6m8 20 8-2M8 74l-6 4" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>
+    <svg className={styles.doodlePencil} viewBox="0 0 160 90" fill="none"><path d="m18 61 15-23 97-20 8 28-97 22Z" fill="#d8e9ff" stroke="currentColor" strokeWidth="3" strokeLinejoin="round"/><path d="m33 38 8 30m-23-7 11 2m10-10 93-20M13 78c23 8 39-12 65-2s40 0 61-5" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>
+  </div>;
 }
 
 function KioskHeader() {
@@ -712,19 +721,19 @@ export function GurumiGame() {
   if (phase === "intro") {
     return (
       <main className={styles.page}>
-        <div className={styles.gridBackdrop} aria-hidden="true" />
+        <SketchbookDecor />
         <KioskHeader />
         <div className={styles.introLayout}>
           <section className={styles.introCopy}>
-            <p className={styles.eyebrow}>AWS Community Day 2026 · SIDE EVENT</p>
+            <p className={styles.eyebrow}>AWS Community Day 2026 · SKETCHBOOK CLUB</p>
             <h1>
               DRAW
               <strong>GURUMI</strong>
             </h1>
             <p className={styles.introLead}>
-              랜덤으로 만나는 AWSKRUG 소모임 구르미!
+              오늘은 어떤 구르미를 그릴까요?
               <br />
-              13가지 구르미 중 하나를 만나고, 30초 동안 따라 그려보세요.
+              AWSKRUG의 13가지 친구들, 30초 동안 자유롭게 따라 그려요.
             </p>
 
             <div className={styles.ruleRow} aria-label="게임 규칙">
@@ -776,7 +785,10 @@ export function GurumiGame() {
                 src={referenceImage}
                 width={1254}
               />
-              <p>어떤 소모임의 구르미를 만나게 될까요?</p>
+              <div className={styles.featuredGroup}>
+                <b>{character.group}</b>
+                <p>{character.description}</p>
+              </div>
               <div className={styles.characterGallery} aria-label="13개 AWSKRUG 소모임 구르미">
                 {GURUMI_CHARACTERS.map((item) => <Image key={item.id} src={characterImage(item.id)} alt={item.group} title={item.group} width={72} height={72} />)}
               </div>
@@ -806,7 +818,7 @@ export function GurumiGame() {
 
   return (
     <main className={styles.page}>
-      <div className={styles.gridBackdrop} aria-hidden="true" />
+      <SketchbookDecor />
       <KioskHeader />
       <div className={styles.gameLayout}>
         <div className={styles.gameStatus}>
@@ -834,6 +846,7 @@ export function GurumiGame() {
               <span>REFERENCE</span>
               <b>AWSKRUG {character.group}</b>
             </div>
+            <p className={styles.referenceDescription}>{character.description}</p>
             <div className={styles.referenceImageWrap}>
               <Image
                 alt={`${character.group} 구르미 기준 이미지`}
@@ -866,7 +879,7 @@ export function GurumiGame() {
               <Image src={referenceImage} alt={`${character.group} 구르미`} width={260} height={260} priority />
               <p>AWSKRUG</p>
               <h2>{character.group}</h2>
-              <span>{character.name} 구르미가 찾아왔어요.</span>
+              <p className={styles.groupDescription}>{character.description}</p>
               <small>잠시 후 30초 그리기가 시작됩니다</small>
             </div>
           )}

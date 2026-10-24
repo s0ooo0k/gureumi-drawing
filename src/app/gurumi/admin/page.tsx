@@ -23,7 +23,7 @@ export default async function GurumiAdminPage() {
 
   if (authenticated) {
     try {
-      records = await listGurumiScores();
+      records = await listGurumiScores(undefined, { allVersions: true });
     } catch {
       initialError = "기록을 불러오지 못했습니다. 잠시 후 새로고침해 주세요.";
     }

@@ -2,11 +2,11 @@
   --admin-ink: #111418;
   --admin-muted: #697078;
   --admin-line: rgba(17, 20, 24, 0.14);
-  --admin-lime: #b7f500;
+  --admin-lime: #cce2ff;
   position: relative;
   min-height: 100svh;
   overflow-x: hidden;
-  background: #f1f2ee;
+  background: #f4f8fd;
   color: var(--admin-ink);
   font-family: var(--font-korean);
 }

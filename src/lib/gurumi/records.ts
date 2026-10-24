@@ -124,7 +124,7 @@ export function createScoreRecord({
       Object.entries(score.parts).map(([part, value]) => [part, value.score]),
     ),
     createdAt,
-    scoreVersion: GURUMI_SCORE_VERSION,
+    scoreVersion: characterId ? GURUMI_SCORE_VERSION : "semantic-shape-v3",
   };
 }
 
