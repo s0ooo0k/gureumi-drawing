@@ -1657,3 +1657,22 @@
   .fullRankingFooter { padding: 10px 12px; }
 }
 .fullRankingDialog { position: fixed; inset: 50% auto auto 50%; margin: 0; transform: translate(-50%, -50%); }
+
+/* The small leaderboard is a note on the paper, not another framed panel. */
+.leaderboard { border: 0; padding: 10px 12px 0; background: transparent; box-shadow: none; transform: none; overflow: visible; }
+.leaderboard::after { display: none; }
+.leaderboardHeading { padding: 4px 8px 10px; border: 0; background: transparent; align-items: center; }
+.leaderboardHeading p { display: none; }
+.leaderboardHeading h2 { display: inline; color: #4b6050; font-size: 1.75rem; background: linear-gradient(transparent 65%, #eddfa557 65% 92%, transparent 92%); padding-inline: 3px; }
+.leaderboardHeading > span { border: 0; padding: 3px 0; background: transparent; color: #718373; font-size: .6rem; }
+.leaderboard .rankList { background: transparent; padding: 5px 4px 12px; gap: 12px; }
+.leaderboard .rankList li { min-height: 46px; border: 0; padding-inline: 8px; color: #536557; }
+.leaderboard .rankNumber { color: #969d90; }
+.leaderboard .rankList strong { font-size: 1.2rem; }
+.leaderboard .rankList b { color: #64735c; font-size: 1.3rem; }
+.leaderboard .rankList .highlightedRank { background: linear-gradient(transparent 70%, #f1e2a45c 70% 95%, transparent 95%); border-radius: 0; }
+.leaderboard .fullRankingButton { border-top: 1px dashed #d7dfd2; padding-inline: 12px; background: transparent; color: #657762; font-size: 1rem; }
+.leaderboard .fullRankingButton:hover:not(:disabled) { color: #345b40; background: #f8faf5; }
+.leaderboard .emptyRanking { min-height: 90px; color: #6b7b68; }
+.leaderboard .localNotice { border-top-color: #e0e5da; }
+@media (max-width: 760px) { .leaderboard .rankList { gap: 0; } .leaderboard .rankList li + li { border-top: 1px dashed #e3e8de; } }
