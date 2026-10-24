@@ -306,7 +306,7 @@ function FullLeaderboard({
       <div className={styles.fullRankingBoard}>
         <header className={styles.fullRankingHeader}>
           <div>
-            <p>ALL CHALLENGERS</p>
+            <p>우리들의 구르미 명예의 전당</p>
             <h2 id={headingId}>전체 랭킹</h2>
           </div>
           <div className={styles.fullRankingMeta}>
@@ -319,16 +319,6 @@ function FullLeaderboard({
           </button>
         </header>
 
-        <div className={styles.fullRankingLegend} aria-hidden="true">
-          {[0, 1, 2].map((column) => (
-            <div key={column}>
-              <span>RANK</span>
-              <span>CHALLENGER</span>
-              <span>SCORE</span>
-            </div>
-          ))}
-        </div>
-
         {open && records.length > 0 ? (
           <ol className={styles.fullRankGrid}>
             {records.map((record, index) => (
@@ -336,15 +326,16 @@ function FullLeaderboard({
                 aria-current={record.id === highlightId ? "true" : undefined}
                 className={record.id === highlightId ? styles.fullRankHighlighted : undefined}
                 data-podium={index < 3 ? "true" : undefined}
+                data-place={index + 1}
                 key={record.id}
               >
-                <span className={styles.fullRankNumber}>
-                  {String(index + 1).padStart(3, "0")}
+                <span className={styles.fullRankNumber} aria-label={`${index + 1}위`}>
+                  {index < 3 ? <svg viewBox="0 0 90 105" width="76" height="88" aria-hidden="true"><path d="m24 63-7 32 27-13 25 13-6-34" fill="var(--medal-ribbon)" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round"/><path d="M47 7C8 3 3 67 42 73c44 8 52-62 5-66Z" fill="var(--medal-fill)" stroke="currentColor" strokeWidth="3"/><path d="M45 14c-33-1-37 48-3 51 34 5 44-49 3-51Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeDasharray="3 4"/><text x="45" y="52" textAnchor="middle" fill="currentColor" fontSize="34" fontFamily="Cabin Sketch, sans-serif" fontWeight="700">{index + 1}</text></svg> : `${index + 1}위`}
                 </span>
                 <strong>{record.name}</strong>
                 <span className={styles.fullRankScore}>
                   <b>{record.score}</b>
-                  <small>PTS</small>
+                  <small>점</small>
                 </span>
               </li>
             ))}
