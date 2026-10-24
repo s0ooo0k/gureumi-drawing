@@ -1389,3 +1389,121 @@
   .doodleStar { top: 31px; right: 24px; width: 48px; height: 48px; }
   .doodleClouds { top: 122px; right: 16px; width: 140px; opacity: .23; }
 }
+
+/* A crayon picture book: open paper, wax fills, and hand-drawn frames. */
+.page { --font-drawing: "Gaegu", var(--font-korean); background: #faf8f1; --gurumi-soft: #eef4f7; }
+.gridBackdrop { inset: 0; border: 0; border-radius: 0; box-shadow: none; background: #fffdf7 url('/assets/sketchbook/paper-grain.svg') repeat; }
+.gridBackdrop::before { inset: auto 0 0; height: 185px; opacity: .9; background: url('/assets/sketchbook/garden.svg') center bottom / auto 180px repeat-x; }
+.gridBackdrop::after, .spiralBinding { display: none; }
+.doodleSun { position: absolute; left: -36px; top: 74px; width: 155px; height: 155px; opacity: .72; transform: rotate(-8deg); }
+.doodleStar { top: 82px; right: 31px; width: 91px; height: 91px; }
+.doodleClouds { top: 4px; right: 22%; width: 210px; opacity: .55; }
+.doodlePencil { bottom: 155px; left: auto; right: 5%; width: 140px; opacity: .8; }
+.header, .introLayout, .gameLayout { width: min(1180px, calc(100% - 128px)); margin-inline: auto; }
+.header { height: 82px; border: 0; }
+.brand { font-family: "Cabin Sketch", var(--font-latin); font-size: 1.12rem; font-weight: 700; letter-spacing: -.025em; transform: rotate(-1deg); }
+.boothId { padding: 2px 13px; gap: 8px; border: 2px solid #6c8bb1; border-radius: 41% 46% 39% 44%; transform: rotate(5deg); background: url('/assets/sketchbook/wax-fill.svg') #f2f6fc; }
+.boothId span { font-family: "Cabin Sketch", var(--font-latin); font-size: .72rem; }
+.boothId strong { font-family: "Cabin Sketch", var(--font-latin); font-size: 1.25rem; }
+.introLayout { min-height: calc(100svh - 82px); grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: 44px 70px; padding-block: 46px 220px; }
+.introCopy { padding: 12px 0; }
+.eyebrow { display: inline-block; position: relative; margin: 0 0 24px; padding: 1px 12px; color: #375d87; font-family: var(--font-drawing); font-size: 1.6rem; font-weight: 700; letter-spacing: -.04em; transform: rotate(-3deg); background: linear-gradient(transparent 47%, #f2d67770 47% 88%, transparent 88%); }
+.introCopy h1 { font-size: clamp(5rem, 8.4vw, 8rem); }
+.introLead { margin-top: 24px; font-family: var(--font-drawing); font-weight: 700; font-size: clamp(1.25rem, 1.6vw, 1.5rem); line-height: 1.45; color: #37506d; }
+.ruleRow { gap: 14px; margin-top: 22px; }
+.ruleRow span { position: relative; min-height: 40px; padding: 3px 10px; border: 0; border-radius: 0; background: transparent; font-family: var(--font-drawing); font-size: 1.05rem; font-weight: 700; gap: 6px; }
+.ruleRow b { display: inline-grid; width: 29px; height: 29px; place-items: center; border: 2px solid #6586ae; border-radius: 46% 43% 48% 40%; background: #dceafb; font-family: "Cabin Sketch", var(--font-latin); font-size: .88rem; }
+.ruleRow span:nth-child(2) b { background: #f9edbf; border-color: #bca15e; color: #80692f; }
+.ruleRow span:nth-child(3) b { background: #dfede3; border-color: #7d9c88; color: #4e765e; }
+.entryForm { margin-top: 24px; }
+.entryForm > label { font-family: var(--font-drawing); font-weight: 700; font-size: 1.25rem; margin-bottom: 6px; }
+.inputRow { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
+.inputRow input { height: 60px; border: 2px solid #6886a8; border-radius: 4% 3% 5% 3% / 12% 17% 10% 14%; padding-inline: 16px; background: #fffefa; font-size: 1rem; box-shadow: 2px 2px 0 #fffdf7, 3px 3px 0 #91a8bf; }
+.inputRow button, .scoreCard > button { position: relative; min-width: 160px; height: 60px; border: 2px solid #2e5281; border-radius: 4% 6% 3% 5% / 12% 10% 15% 13%; background: #d6e7fb url('/assets/sketchbook/wax-fill.svg'); color: #25466e; box-shadow: 2px 3px 0 #819bb9; font-family: var(--font-drawing); font-size: 1.15rem; font-weight: 700; gap: 10px; padding-inline: 13px; transform: rotate(-1deg); }
+.inputRow button:disabled { background: #e8edf2 url('/assets/sketchbook/wax-fill.svg'); border-color: #9daab9; color: #6c7c8d; box-shadow: 2px 3px 0 #c3ccd6; }
+.entryForm > p { color: #6f7d8c; font-size: .7rem; line-height: 1.7; margin-top: 13px; }
+.introVisual { grid-column: 2; grid-row: 1; width: 100%; max-width: 500px; justify-self: center; }
+.characterCard { border: 3px solid #55759b; border-radius: 3% 4% 3% 4% / 4% 3% 5% 3%; background: url('/assets/sketchbook/wax-fill.svg') #f5f9fd; box-shadow: 4px 5px 0 #fffdf7, 6px 7px 0 #a9bdd3; transform: rotate(2deg); }
+.characterCard::before { width: 108px; height: 31px; left: calc(50% - 54px); top: -17px; border: 0; background: #efdc91bd url('/assets/sketchbook/paper-grain.svg'); box-shadow: none; transform: rotate(-6deg); clip-path: polygon(0 8%, 96% 0, 100% 94%, 3% 100%, 5% 84%, 1% 72%, 5% 53%, 0 35%); }
+.characterLabel { padding-top: 24px; }
+.characterLabel span { font-family: "Cabin Sketch", var(--font-latin); font-size: 1rem; color: #46678e; letter-spacing: .03em; }
+.characterLabel b { font-family: "Cabin Sketch", var(--font-latin); font-size: .8rem; color: #46678e; }
+.characterImage { width: 86%; margin-inline: auto; padding: 10px 6px 0; }
+.featuredGroup b { font-family: var(--font-drawing); font-size: 1.65rem; font-weight: 700; }
+.featuredGroup p { font-size: .83rem; color: #4e6882; }
+.characterGallery { gap: 7px; padding: 0 16px 19px; margin-inline: 0; }
+.characterGallery img { width: 42px; height: 42px; border: 0; border-radius: 0; background: transparent; transform: rotate(-5deg); }
+.characterGallery img:nth-child(2n) { transform: rotate(5deg); }
+.introRanking { grid-column: 1 / -1; grid-row: 2; width: 100%; }
+.leaderboard { border: 2px solid #7b96b5; border-radius: 2% 3% 2% 3% / 8% 5% 9% 6%; background: #fffdf7; box-shadow: 3px 4px 0 #fffdf7, 5px 6px 0 #b8c8d7; transform: rotate(-.4deg); }
+.leaderboardHeading { align-items: center; padding: 14px 22px; background: url('/assets/sketchbook/wax-fill.svg') #ecf3fa; border-bottom: 2px dashed #a2b7cd; }
+.leaderboardHeading p { font-family: "Cabin Sketch", var(--font-latin); font-size: .8rem; letter-spacing: .04em; margin: 0; }
+.leaderboardHeading h2 { font-family: var(--font-drawing); font-size: 1.7rem; font-weight: 700; }
+.leaderboardHeading > span { border-color: #94ac9c; color: #557361; background: #e7efe6; font-size: .6rem; }
+.rankList { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 13px 10px; gap: 6px; }
+.rankList li { min-height: 54px; padding: 6px 12px; grid-template-columns: 25px minmax(0, 1fr) auto; gap: 5px; border-bottom: 0; border-right: 1px dashed #a2b7cd; }
+.rankList li:last-child { border-right: 0; }
+.rankNumber, .rankList b { font-family: "Cabin Sketch", var(--font-latin); font-size: 1.25rem; }
+.rankList strong { font-family: var(--font-drawing); font-size: 1.25rem; font-weight: 700; }
+.rankList .highlightedRank { background: #faedb6 url('/assets/sketchbook/wax-fill.svg'); border-radius: 10% 6% 8% 5%; }
+.fullRankingButton { min-height: 42px; background: transparent; border-top: 1px dashed #a2b7cd; font-family: var(--font-drawing); font-size: 1.05rem; font-weight: 700; }
+.emptyRanking { min-height: 100px; }
+.emptyRanking strong { font-family: var(--font-drawing); font-size: 1.35rem; }
+.emptyRanking span { font-size: .8rem; }
+.operatorTools { margin-top: 12px; }
+.gameLayout { padding-bottom: 220px; }
+.gameStatus > div > p, .phaseLabel, .panelHeading > span, .timer > span { font-family: "Cabin Sketch", var(--font-latin); letter-spacing: .04em; }
+.gameStatus > div > strong, .panelHeading > b { font-family: var(--font-drawing); font-weight: 700; font-size: 1.4rem; }
+.timer strong, .countdownOverlay strong { font-family: "Cabin Sketch", var(--font-latin); }
+.referencePanel, .canvasPanel { border: 3px solid #6482a5; border-radius: 2% 3% 2% 3% / 3% 2% 3% 2%; background: #fffefb; box-shadow: 3px 4px 0 #fffdf7, 5px 6px 0 #b8c8d7; }
+.panelHeading { background: #e7f0fa url('/assets/sketchbook/wax-fill.svg'); border-bottom: 2px dashed #a2b7cd; }
+.referenceDescription { background: #f5f8fc; color: #4b6685; }
+.canvasActions button { font-family: var(--font-drawing); font-weight: 700; font-size: 1rem; border: 1px solid #7a96b6; border-radius: 7% 5% 8% 5%; background: #fffdf7; }
+.scoreCard { background: #e7f0fa url('/assets/sketchbook/wax-fill.svg'); border: 3px solid #6482a5; border-radius: 3% 2% 4% 2%; box-shadow: none; }
+.scoreCard h2 { font-family: var(--font-drawing); font-weight: 700; font-size: 2rem; }
+.revealOverlay { background: #fffdf7 url('/assets/sketchbook/paper-grain.svg'); }
+.revealOverlay h2 { font-family: var(--font-drawing); font-size: clamp(2.5rem, 6vw, 4rem); }
+.revealOverlay img { border: 3px solid #6482a5; border-radius: 4% 3% 5% 3%; background: #ecf4fc url('/assets/sketchbook/wax-fill.svg'); transform: rotate(-3deg); box-shadow: 4px 5px 0 #c5d6e8; }
+.revealEyebrow, .revealOverlay > p:not(.groupDescription) { font-family: "Cabin Sketch", var(--font-latin); font-size: 1.1rem; }
+.fullRankingBoard { border: 3px solid #6482a5; border-radius: 1% 2% 1% 2%; background: #fffdf7 url('/assets/sketchbook/paper-grain.svg'); }
+.fullRankingHeader h2 { font-family: var(--font-drawing); font-weight: 700; font-size: 2.2rem; }
+.fullRankGrid li { border-radius: 4% 3% 4% 3%; background: #edf4fc url('/assets/sketchbook/wax-fill.svg'); }
+.fullRankGrid li[data-podium="true"] { background-color: #faf0c9; }
+@media (max-width: 1050px) {
+  .header, .introLayout, .gameLayout { width: calc(100% - 88px); }
+  .introLayout { gap: 38px; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+  .inputRow { grid-template-columns: 1fr; }
+  .inputRow input, .inputRow button { width: 100%; border: 2px solid #6886a8; border-radius: 4% 3% 5% 3% / 12% 17% 10% 14%; }
+  .inputRow button { justify-content: center; }
+  .doodleSun { left: -60px; opacity: .5; }
+}
+@media (max-width: 760px) {
+  .header, .introLayout, .gameLayout { width: calc(100% - 44px); margin-inline: auto; }
+  .header { height: 70px; }
+  .brand { font-size: .95rem; }
+  .introLayout { grid-template-columns: 1fr; padding-top: 52px; gap: 42px; }
+  .introCopy { padding: 0 8px; }
+  .introCopy h1 { font-size: clamp(4.5rem, 19vw, 8rem); }
+  .eyebrow { font-size: 1.55rem; margin-bottom: 18px; }
+  .introVisual { grid-column: 1; grid-row: 2; width: min(100% - 16px, 480px); }
+  .introRanking { grid-column: 1; grid-row: 3; }
+  .introLead { font-size: 1.35rem; }
+  .inputRow { grid-template-columns: minmax(0, 1fr) auto; }
+  .inputRow button { min-width: 145px; }
+  .rankList { grid-template-columns: 1fr; padding: 5px 10px; }
+  .rankList li { border-right: 0; border-bottom: 1px dashed #c1cfdd; }
+  .doodleClouds { top: 88px; right: 2px; width: 125px; opacity: .45; }
+  .doodleStar { top: 360px; right: 18px; width: 56px; height: 56px; opacity: .45; }
+  .doodleSun { top: 60px; width: 100px; height: 100px; left: -30px; }
+  .gridBackdrop::before { background-size: auto 130px; height: 140px; }
+  .doodlePencil { bottom: 135px; width: 95px; }
+  .gameLayout { padding-bottom: 175px; }
+}
+@media (max-width: 420px) {
+  .brand { font-size: .78rem; }
+  .boothId { padding-inline: 8px; gap: 5px; }
+  .boothId span { font-size: .6rem; }
+  .inputRow { grid-template-columns: 1fr; }
+  .ruleRow { gap: 3px; }
+  .ruleRow span { font-size: .95rem; padding-inline: 4px; }
+}

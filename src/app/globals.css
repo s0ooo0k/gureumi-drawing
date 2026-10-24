@@ -2,6 +2,14 @@
 @import "tailwindcss";
 
 @font-face {
+  font-family: "Gaegu";
+  src: url("/fonts/Gaegu-Bold.woff2") format("woff2");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 700;
+}
+
+@font-face {
   font-family: "Cabin Sketch";
   src: url("/fonts/CabinSketch-Bold.ttf") format("truetype");
   font-display: swap;

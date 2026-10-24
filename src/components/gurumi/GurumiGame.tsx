@@ -180,6 +180,11 @@ function SketchbookDecor() {
         <feDisplacementMap in="SourceGraphic" in2="grain" scale="3" xChannelSelector="R" yChannelSelector="G" />
       </filter>
     </defs></svg>
+    <svg className={styles.doodleSun} viewBox="0 0 160 160" fill="none"><g filter="url(#crayon-edge)" stroke="#e1b443" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M51 58c-15 27 9 58 37 49 30-9 31-46 8-58-25-13-42-1-45 22 0 26 33 40 48 16" strokeWidth="5"/>
+      <path d="m61 65 12-12-15 30 30-32-28 44 39-36-26 42 32-29-17 29" strokeWidth="5"/>
+      <path d="m76 31-4-21m32 29 13-22m6 40 25-9m-20 34 23 4m-37 20 15 18m-40-6 4 28m-30-32-12 24m-1-47-24 11m21-34L8 67m36-17L26 30" strokeWidth="5"/>
+    </g></svg>
     <div className={styles.spiralBinding}>{Array.from({ length: 18 }, (_, index) => <i key={index} />)}</div>
     <svg className={styles.doodleStar} viewBox="0 0 100 100" fill="none"><g filter="url(#crayon-edge)"><path d="M49 9 61 35 90 38 65 56 73 85 49 67 24 84 32 54 9 36 39 37Z" fill="#e1ecff" stroke="currentColor" strokeWidth="4" strokeLinejoin="round"/><path d="m43 32 8-12-9 30 15-19-16 32 25-25-17 26 16-13M79 10l4-6m8 20 8-2M8 74l-6 4" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></g></svg>
     <svg className={styles.doodleClouds} viewBox="0 0 240 130" fill="none"><g filter="url(#crayon-edge)" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
@@ -737,7 +742,7 @@ export function GurumiGame() {
         <KioskHeader />
         <div className={styles.introLayout}>
           <section className={styles.introCopy}>
-            <p className={styles.eyebrow}>AWS Community Day 2026 · SKETCHBOOK CLUB</p>
+            <p className={styles.eyebrow}>우리들의 구르미 그림대회</p>
             <h1 aria-label="DRAW GURUMI">
               <span className={styles.titleWord} aria-hidden="true">{"DRAW".split("").map((letter, index) => <span key={index}>{letter}</span>)}</span>
               <strong className={styles.titleWord} aria-hidden="true">{"GURUMI".split("").map((letter, index) => <span key={index}>{letter}</span>)}</strong>
