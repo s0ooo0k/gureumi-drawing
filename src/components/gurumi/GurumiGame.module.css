@@ -57,25 +57,6 @@
   color: rgba(17, 20, 24, 0.46);
 }
 
-.boothId {
-  display: flex;
-  align-items: baseline;
-  gap: 9px;
-  font-family: var(--font-unbounded), var(--font-latin);
-}
-
-.boothId span {
-  color: rgba(17, 20, 24, 0.46);
-  font-size: 0.6rem;
-  letter-spacing: 0.18em;
-}
-
-.boothId strong {
-  color: var(--gurumi-lime-ink);
-  font-size: 1rem;
-  font-weight: 600;
-}
-
 .introLayout {
   position: relative;
   z-index: 1;
@@ -1365,9 +1346,7 @@
 }
 @media (max-width: 400px) {
   .brand { font-size: .62rem; }
-  .boothId { gap: 4px; }
-  .boothId strong { font-size: .8rem; }
-}
+  }
 
 /* Grainy lettering and imperfect crayon marks, like a child's drawing book. */
 .textureDefinitions { position: absolute; pointer-events: none; }
@@ -1402,9 +1381,6 @@
 .header, .introLayout, .gameLayout { width: min(1180px, calc(100% - 128px)); margin-inline: auto; }
 .header { height: 82px; border: 0; }
 .brand { font-family: "Cabin Sketch", var(--font-latin); font-size: 1.12rem; font-weight: 700; letter-spacing: -.025em; transform: rotate(-1deg); }
-.boothId { padding: 2px 13px; gap: 8px; border: 2px solid #6c8bb1; border-radius: 41% 46% 39% 44%; transform: rotate(5deg); background: url('/assets/sketchbook/wax-fill.svg') #f2f6fc; }
-.boothId span { font-family: "Cabin Sketch", var(--font-latin); font-size: .72rem; }
-.boothId strong { font-family: "Cabin Sketch", var(--font-latin); font-size: 1.25rem; }
 .introLayout { min-height: calc(100svh - 82px); grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: 44px 70px; padding-block: 46px 220px; }
 .introCopy { padding: 12px 0; }
 .eyebrow { display: inline-block; position: relative; margin: 0 0 24px; padding: 1px 12px; color: #375d87; font-family: var(--font-drawing); font-size: 1.6rem; font-weight: 700; letter-spacing: -.04em; transform: rotate(-3deg); background: linear-gradient(transparent 47%, #f2d67770 47% 88%, transparent 88%); }
@@ -1501,8 +1477,6 @@
 }
 @media (max-width: 420px) {
   .brand { font-size: .78rem; }
-  .boothId { padding-inline: 8px; gap: 5px; }
-  .boothId span { font-size: .6rem; }
   .inputRow { grid-template-columns: 1fr; }
   .ruleRow { gap: 3px; }
   .ruleRow span { font-size: .95rem; padding-inline: 4px; }
@@ -1518,7 +1492,6 @@
 .doodleSun { opacity: 1; }
 .doodlePencil { color: #1769dc; opacity: .9; }
 .eyebrow { color: #154f9b; background-image: linear-gradient(transparent 47%, #ffd329b3 47% 88%, transparent 88%); }
-.boothId { border-color: #1769db; background-color: #e5f2ff; }
 .characterCard, .leaderboard, .referencePanel, .canvasPanel, .scoreCard, .fullRankingBoard {
   position: relative; border: 5px solid transparent; border-radius: 0; box-shadow: none;
 }
@@ -1563,3 +1536,23 @@
   .scoreCard h2 { margin-top: 0; font-size: 1.65rem; }
   .scoreCard .rankCopy { margin-top: 0; }
 }
+
+/* White space first; blue lettering, green pencil edges, and yellow accents. */
+.characterCard, .scoreCard, .revealOverlay img { background: #fff; }
+.characterCard::after, .referencePanel::after, .canvasPanel::after, .scoreCard::after, .fullRankingBoard::after { background-image: url('/assets/sketchbook/pencil-frame.svg'); }
+.leaderboard::after { background-image: url('/assets/sketchbook/green-frame.svg'); }
+.leaderboardHeading { background: #fff6d4; color: #365b46; border-bottom-color: #c6b876; }
+.panelHeading { background: #f4f7f1; color: #405b4a; border-bottom-color: #b2c1ad; }
+.canvasPanel .panelHeading { background: #fff; }
+.referenceDescription { background: #fff; color: #59666e; }
+.featuredGroup b, .characterLabel, .characterLabel span, .characterLabel b { color: #40574d; }
+.scoreCard { background: #fffbeb; }
+.inputRow input { border-color: #7b858c; box-shadow: 2px 2px 0 #fff, 3px 3px 0 #adb5bb; }
+.inputRow button:disabled { background: #f0f1ee; color: #747e77; border-color: #a6aea8; box-shadow: 2px 3px 0 #d4d9d4; }
+.canvasActions button { border-color: #82968a; color: #496151; }
+.doodleClouds { opacity: .55; }
+.doodleStar { color: #e7b320; }
+.doodlePencil { color: #53946d; }
+.revealOverlay img { border-color: #6f8175; box-shadow: 4px 5px 0 #e0e8df; }
+.fullRankGrid li { background: #f6f8f4; }
+.fullRankGrid li[data-podium="true"], .rankList .highlightedRank { background: #fff0a5; }

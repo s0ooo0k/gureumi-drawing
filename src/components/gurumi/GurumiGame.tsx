@@ -203,10 +203,6 @@ function KioskHeader() {
       <Link className={styles.brand} href="/" aria-label="구르미 그리기 홈으로 이동">
         AWS Community Day <span>2026</span>
       </Link>
-      <div className={styles.boothId}>
-        <span>BOOTH</span>
-        <strong>03</strong>
-      </div>
     </header>
   );
 }
@@ -310,7 +306,7 @@ function FullLeaderboard({
 
         <footer className={styles.fullRankingFooter}>
           <span>점수순 · 동점일 경우 보정점수와 기록시각 순</span>
-          <b>AWS Community Day 2026 · BOOTH 03</b>
+          <b>AWS Community Day 2026</b>
         </footer>
       </div>
     </dialog>
