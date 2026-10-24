@@ -1596,3 +1596,15 @@
   .previewSlide, .gridBackdrop[data-animated="true"] > svg > g { animation: none !important; }
   .gridBackdrop[data-animated="true"] > svg:hover > g { scale: 1; }
 }
+
+/* Keep the invitation visible; draw in the generous outer margins. */
+.inputRow button { background: #245bb4; border-color: #16427f; color: #fff; box-shadow: 2px 3px 0 #173d70; font-size: 1.25rem; }
+.inputRow button:disabled { background: #315f9c; border-color: #244774; color: #fff; box-shadow: 2px 3px 0 #abbcd2; opacity: 1; }
+.inputRow button:focus-visible { outline: 3px solid #ecc94e; outline-offset: 4px; }
+.marginDrawingLeft, .marginDrawingRight { position: absolute; top: 220px; bottom: 140px; width: max(0px, calc((100% - 1280px) / 2)); max-width: 280px; background: url('/assets/sketchbook/margin-drawings.svg') center top / 220px 525px repeat-y; opacity: .8; }
+.marginDrawingLeft { left: max(8px, calc((100% - 1840px) / 4)); }
+.marginDrawingRight { right: max(8px, calc((100% - 1840px) / 4)); transform: scaleX(-1); background-position: center 230px; }
+.introRanking { position: relative; }
+.introRanking::before { content: ""; position: absolute; left: 0; right: 0; top: -45px; height: 38px; pointer-events: none; background: url('/assets/sketchbook/doodle-trail.svg') center / min(440px, 80%) 38px no-repeat; }
+@media (max-width: 1280px) { .marginDrawingLeft, .marginDrawingRight { width: 38px; background-size: 100px 440px; opacity: .45; } }
+@media (max-width: 760px) { .marginDrawingLeft, .marginDrawingRight { display: none; } .introRanking::before { top: -36px; height: 28px; background-size: min(340px, 85%) 28px; } }

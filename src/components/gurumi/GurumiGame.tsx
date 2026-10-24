@@ -174,6 +174,7 @@ function resultMessage(score: number) {
 
 function SketchbookDecor({ interactive = false }: { interactive?: boolean }) {
   return <div className={styles.gridBackdrop} data-animated={interactive} aria-hidden="true">
+    {interactive && <><div className={styles.marginDrawingLeft} /><div className={styles.marginDrawingRight} /></>}
     <svg className={styles.textureDefinitions} width="0" height="0"><defs>
       <filter id="crayon-edge" x="-15%" y="-15%" width="130%" height="130%">
         <feTurbulence type="fractalNoise" baseFrequency=".12" numOctaves="3" seed="8" result="grain" />
