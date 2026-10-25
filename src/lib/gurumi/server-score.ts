@@ -1,4 +1,5 @@
 import "server-only";
+import { getGurumiCharacterReference } from "./character-reference";
 
 import path from "node:path";
 
@@ -25,6 +26,7 @@ async function buildServerReferenceModel(characterId?: string) {
     characterId ? "adaptive" : "legacy");
 }
 export async function scoreGurumiDrawing(strokes: Stroke[], characterId?: string) {
+  if (characterId !== undefined) return scoreDrawing(strokes, getGurumiCharacterReference(characterId));
   const key = characterId ?? "legacy";
   let model = models.get(key);
   if (!model) {

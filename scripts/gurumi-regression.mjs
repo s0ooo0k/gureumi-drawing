@@ -280,19 +280,48 @@ for (const character of characters.GURUMI_CHARACTERS) {
   const matched = similarity.scoreDrawing(traces, model);
   assert.ok(Number.isFinite(matched.score) && matched.score >= 90, `${character.id}: faithful contours must score at least 90 (got ${matched.score})`);
   const coarse = traces.map(stroke => ({ points: stroke.points.filter((_, index) => index % 3 === 0 || index === stroke.points.length - 1) }));
-  assert.ok(Math.abs(similarity.scoreDrawing(coarse, model).score - matched.score) <= 8, `${character.id}: sampling rate must not change the result materially`);
+  assert.ok(Math.abs(similarity.scoreDrawing(coarse, model).score - matched.score) <= 12, `${character.id}: sampling rate must not change the result materially`);
   const jitter = mapDrawing(coarse, (point, index) => ({ x: point.x + Math.sin(index * 1.9) * .012, y: point.y + Math.cos(index * 1.3) * .012 }));
-  assert.ok(similarity.scoreDrawing(jitter, model).score >= 80, `${character.id}: mild hand tremor must retain a strong match`);
+  assert.ok(similarity.scoreDrawing(jitter, model).score >= 75, `${character.id}: mild hand tremor must retain a strong match`);
   const scaled = mapDrawing(traces, point => ({ x: .25 + point.x * .5, y: .25 + point.y * .5 }));
-  assert.ok(Math.abs(similarity.scoreDrawing(scaled, model).score - matched.score) <= 6, `${character.id}: drawing size must not determine the score`);
+  assert.ok(Math.abs(similarity.scoreDrawing(scaled, model).score - matched.score) <= 1, `${character.id}: drawing size must not determine the score`);
   assert.ok(Math.abs(similarity.scoreDrawing([...traces, ...traces], model).score - matched.score) <= 2, `${character.id}: retracing must neither boost nor destroy a match`);
   const partial = traces.map(stroke => ({ points: stroke.points.filter(point => point.x < .4) })).filter(stroke => stroke.points.length > 1);
   const partialScore = similarity.scoreDrawing(partial, model).score;
-  assert.ok(partialScore > 0 && partialScore < 35, `${character.id}: an accurate fragment receives partial credit (got ${partialScore})`);
+  assert.ok(partialScore > 0 && partialScore < 55, `${character.id}: an accurate fragment receives partial credit (got ${partialScore})`);
   for (const [label, drawing] of Object.entries({ hatch, spiral, scribble, cross })) {
     const score = similarity.scoreDrawing(drawing, model).score;
-    assert.ok(score <= 45, `${character.id}: ${label} must not receive a high score (got ${score})`);
+    assert.ok(score < matched.score - 25, `${character.id}: ${label} must be clearly below faithful contours (got ${score})`);
   }
+  // The exact pixels shown in the result must reproduce the stored score.
+  const overlay = matched.comparison;
+  let intersection = 0, union = 0, referenceInk = 0, drawingInk = 0;
+  for (let i = 0; i < overlay.referenceMask.length; i++) {
+    const expected = Boolean(overlay.referenceMask[i]), actual = Boolean(overlay.userMask[i]);
+    if (expected) referenceInk++;
+    if (actual) drawingInk++;
+    if (expected || actual) union++;
+    if (expected && actual) intersection++;
+    assert.equal(overlay.matchedReferenceMask[i], Number(expected && actual));
+    assert.equal(overlay.matchedUserMask[i], Number(expected && actual));
+  }
+  assert.equal(matched.score, Math.round(100 * intersection / union));
+  assert.ok(Math.abs(matched.raw - intersection / union) < 1e-12);
+  assert.equal(overlay.precision, intersection / drawingInk);
+  assert.equal(overlay.recall, intersection / referenceInk);
+  const encodedTraces = Buffer.concat(traces.map(stroke => Buffer.from(encodeStroke(stroke.points), "base64"))).toString("base64");
+  const roundTripped = similarity.scoreDrawing(codec.decodeStrokes(encodedTraces).strokes, model);
+  const reproduced = similarity.compareGurumiDrawing(codec.decodeStrokes(encodedTraces).strokes, model);
+  assert.equal(roundTripped.score, reproduced.score, "The transmitted drawing and displayed overlay reproduce the same score.");
+
+  const duplicated = similarity.scoreDrawing([...traces, ...traces], model);
+  assert.equal(duplicated.score, matched.score, "Retracing the same line cannot add overlap credit.");
+  const shifted = mapDrawing(traces, point => ({ x: point.x * .7 + .13, y: point.y * .7 + .07 }));
+  assert.ok(Math.abs(similarity.scoreDrawing(shifted, model).score - matched.score) <= 1, "Position and uniform size are normalized without warping the character.");
+  const missing = similarity.scoreDrawing(partial, model);
+  assert.ok(missing.score < matched.score, "Missing lines lower the overlap score.");
+  const polluted = similarity.scoreDrawing([...traces, ...hatch], model);
+  assert.ok(polluted.score < matched.score, "Extra unrelated lines increase the union and lower the score.");
   assert.deepEqual(Object.keys(matched.parts), [...similarity.ADAPTIVE_PART_IDS]);
   assert.equal(similarity.scoreDrawing([], model).score, 0);
   assert.ok(similarity.scoreDrawing(concentricEllipses(5, .38, .9), model).score <= 60, `${character.id}: generic loops must not score highly`);
@@ -339,12 +368,23 @@ assert.equal(scoredCharacter, signedRound.characterId, "Server scoring must use 
 assert.equal(storedRecord.characterId, signedRound.characterId);
 console.log("Score API checks passed: server scoring and stored character match the signed round.");
 
+const maskData = compileTypeScript("src/lib/gurumi/reference-mask-data.ts");
+const characterReference = compileTypeScript("src/lib/gurumi/character-reference.ts", id => {
+  if (id === "./reference-mask-data") return maskData;
+  if (id === "./similarity") return similarity;
+  throw new Error(`Unexpected import: ${id}`);
+});
+for (let i = 0; i < characters.GURUMI_CHARACTERS.length; i++) {
+  assert.deepEqual(characterReference.getGurumiCharacterReference(characters.GURUMI_CHARACTERS[i].id).mask,
+    adaptiveModels[i].model.mask, "Browser and server must use the same canonical source mask.");
+}
 const serverScoring = compileTypeScript("src/lib/gurumi/server-score.ts", (id) => {
   if (id === "server-only") return {};
   if (id === "node:path") return { default: path };
   if (id === "sharp") return { default: sharp };
   if (id === "./similarity") return similarity;
   if (id === "./characters") return characters;
+  if (id === "./character-reference") return characterReference;
   throw new Error(`Unexpected import: ${id}`);
 });
 assert.equal((await serverScoring.scoreGurumiDrawing(architecture.traces, "architecture")).score, architecture.matched.score);
@@ -356,8 +396,9 @@ const roundRoute = compileTypeScript("src/app/api/gurumi/round/route.ts", (id) =
   throw new Error(`Unexpected import: ${id}`);
 });
 assert.equal((await roundRoute.POST(new Request("https://example.com/api/gurumi/round", { method: "POST" }))).status, 409);
+assert.equal((await roundRoute.POST(new Request("https://example.com/api/gurumi/round", { method: "POST", headers: { "X-Gurumi-Client": "krug-v1" } }))).status, 409);
 const newRound = await roundRoute.POST(new Request("https://example.com/api/gurumi/round", {
-  method: "POST", headers: { "X-Gurumi-Client": "krug-v1", "x-real-ip": "203.0.113.202" },
+  method: "POST", headers: { "X-Gurumi-Client": "krug-overlap-v6", "x-real-ip": "203.0.113.202" },
 }));
 assert.equal(newRound.status, 201);
 assert.ok(records.isGurumiRoundSession(await newRound.json()));

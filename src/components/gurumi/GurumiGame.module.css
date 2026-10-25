@@ -1670,3 +1670,25 @@
 .revealCard .groupDescription { max-width: 420px; margin-top: 12px; color: #52684f; font-size: 1rem; }
 .revealCard small { display: block; margin-top: 20px; padding: 6px 14px; border-radius: 8% 6% 9% 5%; background: #faf3d6; color: #827344; font-size: .78rem; }
 @media (max-width: 560px) { .revealOverlay { padding: 24px 18px; } .revealCard { padding: 25px 20px; } .revealCard .revealEyebrow { font-size: 1.3rem; } .revealCard .groupDescription { font-size: .9rem; } }
+
+.comparisonPanel { grid-column: 1 / -1; padding: 24px; background: #fff; border: 2px solid #b9cbb9; border-radius: 2% 3% 2% 3%; }
+.comparisonHeader { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.comparisonHeader h2 { margin: 0; color: #365940; font-family: var(--font-drawing); font-size: 1.9rem; font-weight: 700; }
+.comparisonHeader p { margin: 4px 0 0; color: #6c7c70; font-size: .8rem; }
+.comparisonTabs { display: flex; flex-wrap: wrap; gap: 5px; }
+.comparisonTabs button { min-height: 42px; border: 1px solid #c2d0c0; border-radius: 8% 6% 7% 5%; background: #fff; color: #58705b; padding: 6px 12px; font-size: .82rem; cursor: pointer; }
+.comparisonTabs button[aria-pressed="true"] { background: #e5f0df; border-color: #719667; color: #345338; font-weight: 600; }
+.comparisonBody { display: grid; grid-template-columns: minmax(240px, .9fr) minmax(0, 1fr); align-items: center; gap: 30px; margin-top: 20px; }
+.comparisonBody canvas { display: block; width: min(100%, 390px); aspect-ratio: 1; margin-inline: auto; border: 1px dashed #d4ddd0; border-radius: 10px; }
+.comparisonLegend { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 12px; font-size: .73rem; color: #596b5b; }
+.comparisonLegend span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 5px; background: #268b60; border-radius: 3px; }
+.comparisonLegend span[data-color="reference"]::before { background: #5b85c9; }
+.comparisonLegend span[data-color="drawing"]::before { background: #da6f54; }
+.comparisonExplanation > p { display: flex; align-items: baseline; gap: 12px; margin: 0 0 14px; color: #4c6651; }
+.comparisonExplanation > p b { font-family: "Cabin Sketch", var(--font-latin); font-size: 2rem; min-width: 76px; }
+.comparisonExplanation > p span { font-size: .88rem; }
+.comparisonFormula { padding: 16px; margin-block: 20px; background: #faf5de; border-radius: 3% 2% 4% 2%; }
+.comparisonFormula strong, .comparisonFormula span { display: block; font-size: .85rem; color: #70663d; line-height: 1.7; }
+.comparisonFormula span { font-size: .78rem; }
+.comparisonExplanation small { color: #7c867d; font-size: .75rem; line-height: 1.8; }
+@media (max-width: 700px) { .comparisonPanel { padding: 18px; } .comparisonBody { grid-template-columns: 1fr; gap: 22px; } .comparisonHeader h2 { font-size: 1.65rem; } }

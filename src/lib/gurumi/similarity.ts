@@ -8,7 +8,7 @@ export type Stroke = {
 };
 
 export const GURUMI_SCORE_GRID_SIZE = 128;
-export const GURUMI_SCORE_VERSION = "reference-shape-v5";
+export const GURUMI_SCORE_VERSION = "reference-overlap-v6";
 
 export const GURUMI_PART_IDS = [
   "body",
@@ -29,6 +29,7 @@ export type PartScore = {
 };
 
 export type SimilarityScore = {
+  comparison?: GurumiOverlapComparison;
   score: number;
   calibrated: number;
   raw: number;
@@ -347,7 +348,7 @@ function getMaskBounds(mask: Uint8Array, width: number, height: number): Bounds 
   return maxX >= 0 ? { minX, minY, maxX, maxY } : null;
 }
 
-function getRobustStrokeBounds(strokes: Stroke[]): Bounds | null {
+function getRobustStrokeBounds(strokes: Stroke[], trimOutliers = true): Bounds | null {
   const xCoordinates: number[] = [];
   const yCoordinates: number[] = [];
   const samplingStep = 1 / GRID_SIZE;
@@ -375,7 +376,7 @@ function getRobustStrokeBounds(strokes: Stroke[]): Bounds | null {
   xCoordinates.sort((first, second) => first - second);
   yCoordinates.sort((first, second) => first - second);
 
-  const trim = xCoordinates.length >= 40 ? 0.01 : 0;
+  const trim = trimOutliers && xCoordinates.length >= 40 ? 0.01 : 0;
   const lowerIndex = Math.floor((xCoordinates.length - 1) * trim);
   const upperIndex = Math.ceil((xCoordinates.length - 1) * (1 - trim));
 
@@ -764,12 +765,13 @@ function findBestAlignedMask(
   strokes: Stroke[],
   userBounds: Bounds,
   reference: GurumiReferenceModel,
+  overlapOnly = false,
 ) {
   const userWidth = Math.max(userBounds.maxX - userBounds.minX, 0.001);
   const userHeight = Math.max(userBounds.maxY - userBounds.minY, 0.001);
   const referenceWidth = reference.bounds.maxX - reference.bounds.minX;
   const referenceHeight = reference.bounds.maxY - reference.bounds.minY;
-  const baseScale = Math.min(referenceWidth / userWidth, referenceHeight / userHeight) * 0.98;
+  const baseScale = Math.min(referenceWidth / userWidth, referenceHeight / userHeight) * (overlapOnly ? 1 : .98);
   const baseTransform = {
     userCenterX: (userBounds.minX + userBounds.maxX) / 2,
     userCenterY: (userBounds.minY + userBounds.maxY) / 2,
@@ -779,6 +781,7 @@ function findBestAlignedMask(
   const matchSigma = reference.regions ? 2.5 : GLOBAL_MATCH_SIGMA;
   const orientationWeight = reference.regions ? .65 : .18;
   const comparableMask = reference.regions ? dilate(reference.mask, 1) : reference.mask;
+  const overlapReferenceDistances = overlapOnly ? distanceTransform(comparableMask) : reference.distances;
   const scaleFactors = [0.9, 1, 1.1] as const;
   const offsets = [-3, 0, 3] as const;
   let bestMask = new Uint8Array(GRID_SIZE * GRID_SIZE);
@@ -808,12 +811,12 @@ function findBestAlignedMask(
     const rasterized = rasterizeStrokes(strokes, transform);
     const mask = rasterized.mask;
     const userDistances = distanceTransform(mask);
-    const precision = directionalMatch(mask, reference.distances, matchSigma,
+    const precision = overlapOnly ? nearbyFraction(mask, overlapReferenceDistances) : directionalMatch(mask, reference.distances, matchSigma,
       rasterized.orientations, reference.orientations, orientationWeight);
-    const recall = directionalMatch(reference.mask, userDistances, matchSigma,
+    const recall = overlapOnly ? nearbyFraction(comparableMask, userDistances) : directionalMatch(reference.mask, userDistances, matchSigma,
       reference.orientations, rasterized.orientations, orientationWeight);
     const structure = absoluteCellIoU(mask, comparableMask);
-    const objective = fBeta(precision, recall) * .8 + structure * .2 - penalty;
+    const objective = overlapOnly ? overlapRatio(precision, recall) : fBeta(precision, recall) * .8 + structure * .2 - penalty;
     if (objective > bestObjective) {
       bestObjective = objective;
       bestMask = mask;
@@ -840,7 +843,11 @@ export function buildGurumiReferenceModel(imageData: ImageData, mode: "legacy" |
     throw new Error(`Reference image must be ${GRID_SIZE}x${GRID_SIZE}px.`);
   }
 
-  const mask = buildReferenceEdges(imageData);
+  return buildGurumiReferenceModelFromMask(buildReferenceEdges(imageData), mode);
+}
+
+export function buildGurumiReferenceModelFromMask(mask: Uint8Array, mode: "legacy" | "adaptive" = "adaptive"): GurumiReferenceModel {
+  if (mask.length !== GRID_SIZE * GRID_SIZE) throw new Error("Invalid reference mask size.");
   const bounds = getMaskBounds(mask, GRID_SIZE, GRID_SIZE);
   if (!bounds) throw new Error("Reference image does not contain detectable lines.");
 
@@ -1151,110 +1158,74 @@ function clipMask(mask: Uint8Array, bounds: Bounds) {
 
 // Detect distinct nested ellipses, regardless of where or how large they are
 // drawn. Retracing one outline does not create an additional nested ring.
-function nestedLoopRisk(strokes: Stroke[], totalLength: number) {
-  const loops: { x: number; y: number; width: number; height: number; length: number }[] = [];
-  for (const stroke of strokes) {
-    if (stroke.points.length < 12) continue;
-    const xs = stroke.points.map(point => point.x);
-    const ys = stroke.points.map(point => point.y);
-    const width = Math.max(...xs) - Math.min(...xs);
-    const height = Math.max(...ys) - Math.min(...ys);
-    if (width < .005 || height < .005) continue;
-    const first = stroke.points[0], last = stroke.points[stroke.points.length - 1];
-    if (Math.hypot(last.x - first.x, last.y - first.y) > Math.min(width, height) * .18) continue;
-    const x = (Math.max(...xs) + Math.min(...xs)) / 2;
-    const y = (Math.max(...ys) + Math.min(...ys)) / 2;
-    let length = 0;
-    const radii = stroke.points.map((point, index) => {
-      if (index) length += Math.hypot(point.x - stroke.points[index - 1].x, point.y - stroke.points[index - 1].y);
-      return Math.hypot((point.x - x) / (width / 2), (point.y - y) / (height / 2));
-    });
-    const mean = radii.reduce((sum, value) => sum + value, 0) / radii.length;
-    const deviation = Math.sqrt(radii.reduce((sum, value) => sum + (value - mean) ** 2, 0) / radii.length);
-    if (deviation / Math.max(mean, .001) < .16) loops.push({ x, y, width, height, length });
+// An equal-width line match, with the same three-pixel line width on both sides.
+// Both the displayed overlay and the server score use these exact masks.
+export const GURUMI_OVERLAP_TOLERANCE = 0;
+
+function nearbyFraction(mask: Uint8Array, distances: Float32Array) {
+  let ink = 0, matched = 0;
+  for (let i = 0; i < mask.length; i++) {
+    if (!mask[i]) continue;
+    ink++;
+    if (distances[i] <= GURUMI_OVERLAP_TOLERANCE) matched++;
   }
-  let risk = 0;
-  for (const anchor of loops) {
-    const group = loops.filter(loop =>
-      Math.hypot(loop.x - anchor.x, loop.y - anchor.y) < Math.max(anchor.width, anchor.height) * .08 &&
-      Math.abs(Math.log((loop.width / loop.height) / (anchor.width / anchor.height))) < .3);
-    const sizes = group.map(loop => Math.sqrt(loop.width * loop.height)).sort((a, b) => a - b);
-    let distinct = 0, lastSize = 0;
-    for (const size of sizes) {
-      if (!lastSize || size > lastSize * 1.15) { distinct++; lastSize = size; }
-    }
-    const share = group.reduce((sum, loop) => sum + loop.length, 0) / Math.max(totalLength, .001);
-    risk = Math.max(risk, smoothstep(2, 5, distinct) * smoothstep(.35, .7, share));
+  return ink ? matched / ink : 0;
+}
+
+// Exact intersection over union of equal-width lines, expressed through precision/recall.
+// No hidden feature weights, effort penalties, score caps, or character bonuses.
+function overlapRatio(precision: number, recall: number) {
+  const intersection = precision * recall;
+  const union = precision + recall - intersection;
+  return union > 0 ? intersection / union : 0;
+}
+
+export type GurumiOverlapComparison = {
+  referenceMask: Uint8Array;
+  userMask: Uint8Array;
+  matchedReferenceMask: Uint8Array;
+  matchedUserMask: Uint8Array;
+  precision: number;
+  recall: number;
+  similarity: number;
+  score: number;
+};
+
+export function compareGurumiDrawing(strokes: Stroke[], reference: GurumiReferenceModel): GurumiOverlapComparison {
+  const referenceMask = dilate(reference.mask, 1);
+  const bounds = getRobustStrokeBounds(strokes, false);
+  const alignment = bounds ? findBestAlignedMask(strokes, bounds, reference, true) : null;
+  const userMask = alignment?.mask ?? new Uint8Array(referenceMask.length);
+  const referenceDistances = distanceTransform(referenceMask);
+  const userDistances = distanceTransform(userMask);
+  const matchedReferenceMask = new Uint8Array(referenceMask.length);
+  const matchedUserMask = new Uint8Array(referenceMask.length);
+  for (let i = 0; i < referenceMask.length; i++) {
+    if (referenceMask[i] && userDistances[i] <= GURUMI_OVERLAP_TOLERANCE) matchedReferenceMask[i] = 1;
+    if (userMask[i] && referenceDistances[i] <= GURUMI_OVERLAP_TOLERANCE) matchedUserMask[i] = 1;
   }
-  return risk;
+  const precision = nearbyFraction(userMask, referenceDistances);
+  const recall = nearbyFraction(referenceMask, userDistances);
+  const similarity = overlapRatio(precision, recall);
+  return { referenceMask, userMask, matchedReferenceMask, matchedUserMask,
+    precision, recall, similarity, score: Math.round(similarity * 100) };
 }
 
 function scoreAdaptiveDrawing(strokes: Stroke[], reference: GurumiReferenceModel): SimilarityScore {
   const analysis = analyzeStrokes(strokes);
-  const bounds = getRobustStrokeBounds(strokes);
-  const empty = { ...emptyScore(analysis.strokeLength), parts: createRecord(ADAPTIVE_PART_IDS,
-    () => ({ score: 0, precision: 0, recall: 0 })) };
-  if (!bounds || analysis.strokeLength === 0) return empty;
-  const alignment = findBestAlignedMask(strokes, bounds, reference);
-  const userInk = countMaskPixels(alignment.mask);
-  if (!userInk) return empty;
+  const match = compareGurumiDrawing(strokes, reference);
   const parts: Record<string, PartScore> = {};
-  let weightedScore = 0;
-  let totalWeight = 0;
   for (const region of reference.regions ?? []) {
-    const userRegion = clipMask(alignment.mask, region.bounds);
-    const precision = directionalMatch(userRegion, region.reference.distances,
-      2.5, alignment.orientations, region.reference.orientations, .65);
-    const recall = directionalMatch(region.reference.mask, distanceTransform(userRegion),
-      2.5, region.reference.orientations, alignment.orientations, .65);
-    const score = fBeta(precision, recall, 1) * Math.sqrt(recall);
-    parts[region.id] = { score, precision, recall };
-    // Small details matter, without letting empty corners lower the score.
-    const weight = Math.sqrt(region.reference.pixelCount);
-    weightedScore += score * weight;
-    totalWeight += weight;
+    const user = clipMask(match.userMask, region.bounds);
+    const expected = clipMask(match.referenceMask, region.bounds);
+    const precision = nearbyFraction(user, distanceTransform(expected));
+    const recall = nearbyFraction(expected, distanceTransform(user));
+    parts[region.id] = { score: overlapRatio(precision, recall), precision, recall };
   }
-  const semantic = totalWeight ? weightedScore / totalWeight : 0;
-  const globalLineScore = fBeta(alignment.precision, alignment.recall, 1);
-  const global = globalLineScore * 0.6 + alignment.structure * 0.4;
-  const raw = semantic * 0.35 + global * 0.65;
-  const poseCoverage = absoluteCellCoverage(alignment.mask, reference.mask);
-  // Reference edges are one pixel wide; canvas strokes are rasterized with a
-  // one-pixel radius. Compare equal-width ink before considering excess ink.
-  const expectedInk = countMaskPixels(dilate(reference.mask, 1));
-  const densityRatio = userInk / Math.max(1, expectedInk);
-  const excessInk = Math.max(0, densityRatio - 1.25);
-  const densityFactor = Math.exp(-1.8 * excessInk * excessInk);
-  const transformedLength = analysis.strokeLength * alignment.transform.scale;
-  const overdrawEfficiency = clamp(userInk / Math.max(1, transformedLength * 3 + analysis.strokeCount * 5));
-  const concentricRisk = nestedLoopRisk(strokes, analysis.strokeLength);
-  // Matching geometry is independent of drawing size, input sampling rate,
-  // and retracing a line. Completeness and unmatched ink already account for
-  // missing detail and scribbles; multiplying path-length penalties punished
-  // faithful outlines simply for containing many nearby edges.
-  // Both outline agreement AND the distribution of ink must match. Averaging
-  // them allowed a dense grid/scribble to win through broad coverage alone.
-  const fidelity = Math.sqrt(globalLineScore * alignment.structure);
-  const detailFactor = .85 + .15 * smoothstep(.25, .7, semantic);
-  const fidelityCredit = .99 * smoothstep(.35, .85, fidelity) * detailFactor;
-  const partialCredit = .65 * alignment.precision ** 2 * alignment.recall;
-  const penalized = Math.max(fidelityCredit, partialCredit) * densityFactor * (1 - .55 * concentricRisk);
-  let unmatched = 0;
-  for (let index = 0; index < alignment.mask.length; index++) {
-    if (alignment.mask[index] && reference.distances[index] > 3) unmatched++;
-  }
-  const unmatchedInk = unmatched / userInk;
-  const scoreCap = Math.min(99,
-    99 - 70 * smoothstep(.1, .45, unmatchedInk),
-    35 + 64 * smoothstep(.3, .8, alignment.structure),
-    35 + 64 * smoothstep(0.25, 0.8, poseCoverage),
-    25 + 74 * smoothstep(0.25, 0.85, alignment.recall),
-    99 - 50 * smoothstep(1.5, 2.5, densityRatio),
-    99 - 60 * concentricRisk);
-  const calibrated = Math.min(0.99, scoreCap / 100, clamp(penalized));
-  return { score: Math.round(calibrated * 100), calibrated, raw, semantic, global,
-    precision: alignment.precision, recall: alignment.recall, structure: alignment.structure,
-    unmatchedInk, poseCoverage, densityRatio, overdrawEfficiency,
-    orientationEntropy: analysis.orientationEntropy, loopMonotony: concentricRisk,
-    dominantDirection: analysis.dominantDirection, strokeLength: analysis.strokeLength, scoreCap, parts };
+  return { comparison: match, score: match.score, calibrated: match.similarity, raw: match.similarity,
+    semantic: match.recall, global: match.similarity, precision: match.precision, recall: match.recall,
+    structure: match.similarity, unmatchedInk: 1 - match.precision, poseCoverage: match.recall,
+    densityRatio: countMaskPixels(match.userMask) / Math.max(1, countMaskPixels(match.referenceMask)),
+    overdrawEfficiency: 1, orientationEntropy: analysis.orientationEntropy, loopMonotony: 0,
+    dominantDirection: analysis.dominantDirection, strokeLength: analysis.strokeLength, scoreCap: 100, parts };
 }

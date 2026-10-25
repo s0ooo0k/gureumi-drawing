@@ -5,11 +5,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import {
-  buildGurumiReferenceModel,
   ADAPTIVE_PART_IDS,
-  GURUMI_SCORE_GRID_SIZE,
   GURUMI_SCORE_VERSION,
   scoreDrawing,
+  type GurumiOverlapComparison,
   type GurumiReferenceModel,
 } from "@/lib/gurumi/similarity";
 import {
@@ -32,9 +31,11 @@ import {
   listPendingGurumiScores,
   savePendingGurumiScore,
 } from "@/lib/gurumi/offline-store";
-import { encodeStrokes } from "@/lib/gurumi/stroke-codec";
+import { decodeStrokes, encodeStrokes } from "@/lib/gurumi/stroke-codec";
 
 import { DrawingCanvas, type DrawingCanvasHandle } from "./DrawingCanvas";
+import { DrawingComparison } from "./DrawingComparison";
+import { getGurumiCharacterReference } from "@/lib/gurumi/character-reference";
 import styles from "./GurumiGame.module.css";
 
 import { GURUMI_CHARACTERS, characterImage, characterLabel, getGurumiCharacter } from "@/lib/gurumi/characters";
@@ -49,23 +50,6 @@ const PART_LABELS: Record<string, string> = {
 };
 type Phase = "intro" | "reveal" | "countdown" | "drawing" | "scoring" | "result";
 
-async function loadReferenceModel(src: string): Promise<GurumiReferenceModel> {
-  const image = new window.Image();
-  await new Promise<void>((resolve, reject) => {
-    const timeout = window.setTimeout(() => reject(new Error("구르미 이미지를 불러오지 못했습니다. 다시 시도해 주세요.")), 12_000);
-    image.onload = () => { window.clearTimeout(timeout); resolve(); };
-    image.onerror = () => { window.clearTimeout(timeout); reject(new Error("구르미 이미지를 불러오지 못했습니다. 다시 시도해 주세요.")); };
-    image.src = src;
-  });
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = GURUMI_SCORE_GRID_SIZE;
-  const context = canvas.getContext("2d", { willReadFrequently: true });
-  if (!context) throw new Error("그리기를 지원하는 브라우저로 다시 접속해 주세요.");
-  context.fillStyle = "#ffffff";
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  context.drawImage(image, 0, 0, canvas.width, canvas.height);
-  return buildGurumiReferenceModel(context.getImageData(0, 0, canvas.width, canvas.height), "adaptive");
-}
 type StorageMode = "loading" | "live" | "saving" | "offline";
 
 function readCachedRecords() {
@@ -137,7 +121,7 @@ function responseErrorMessage(body: unknown, fallback: string) {
 
 async function prepareRound() {
   const { body, response } = await fetchJsonWithTimeout("/api/gurumi/round", {
-    headers: { "X-Gurumi-Client": "krug-v1" },
+    headers: { "X-Gurumi-Client": "krug-overlap-v6" },
     method: "POST",
   });
   if (!response.ok) {
@@ -448,6 +432,7 @@ export function GurumiGame() {
   const [referenceModel, setReferenceModel] = useState<GurumiReferenceModel | null>(null);
   const [records, setRecords] = useState<ScoreRecord[]>([]);
   const [currentRecord, setCurrentRecord] = useState<ScoreRecord | null>(null);
+  const [comparison, setComparison] = useState<GurumiOverlapComparison | null>(null);
   const [storageMode, setStorageMode] = useState<StorageMode>("loading");
   const [roundSession, setRoundSession] = useState<GurumiRoundSession | null>(null);
   const [roundStarting, setRoundStarting] = useState(false);
@@ -545,7 +530,13 @@ export function GurumiGame() {
     const scoringStartedAt = performance.now();
 
     const strokes = canvasRef.current?.getStrokes() ?? [];
-    const score = scoreDrawing(strokes, referenceModel);
+    const { encoded } = encodeStrokes(strokes);
+    let scoringStrokes = strokes;
+    try { scoringStrokes = decodeStrokes(encoded).strokes; } catch {
+      // The submission endpoint reports drawings that exceed the work limit.
+    }
+    const score = scoreDrawing(scoringStrokes, referenceModel);
+    setComparison(score.comparison ?? null);
     const normalizedName = normalizeGurumiName(name);
     if (!normalizedName) return;
     const id = roundSession.id;
@@ -556,7 +547,6 @@ export function GurumiGame() {
       score,
       characterId: roundSession.characterId,
     });
-    const { encoded } = encodeStrokes(strokes);
     const submission: ScoreSubmission = {
       id,
       name: localRecord.name,
@@ -692,7 +682,7 @@ export function GurumiGame() {
 
     try {
       const session = await prepareRound();
-      const model = await loadReferenceModel(characterImage(session.characterId));
+      const model = getGurumiCharacterReference(session.characterId);
       setReferenceModel(model);
       setRoundSession(session);
       setName(normalizedName);
@@ -702,6 +692,7 @@ export function GurumiGame() {
       canvasRef.current?.clear();
       setSecondsLeft(ROUND_DURATION / 1_000);
       setCurrentRecord(null);
+      setComparison(null);
       setPhase("reveal");
     } catch (error) {
       setStartError(
@@ -720,6 +711,7 @@ export function GurumiGame() {
     setRoundSession(null);
     setStartError("");
     setCurrentRecord(null);
+    setComparison(null);
     setSecondsLeft(ROUND_DURATION / 1_000);
     setPhase("intro");
   };
@@ -943,7 +935,7 @@ export function GurumiGame() {
         {phase === "result" && currentRecord && (
           <section className={styles.resultSection} ref={resultSectionRef}>
             <div className={styles.scoreCard}>
-              <p>MATCH SCORE · {characterLabel(currentRecord.characterId)}</p>
+              <p>겹침 점수 · {characterLabel(currentRecord.characterId)}</p>
               <div className={styles.scoreValue}>
                 <strong>{currentRecord.score}</strong>
                 <span>점</span>
@@ -967,6 +959,7 @@ export function GurumiGame() {
               storageMode={storageMode}
               storageNotice={storageNotice}
             />
+            {comparison && <DrawingComparison comparison={comparison} />}
           </section>
         )}
       </div>

@@ -11,9 +11,9 @@ const RESPONSE_HEADERS = {
 };
 
 export async function POST(request: Request) {
-  // A previously opened event page still has the old, fixed reference image.
-  // Make it refresh rather than silently scoring against a different character.
-  if (request.headers.get("x-gurumi-client") !== "krug-v1") {
+  // Previously opened pages use a different scorer and cannot show the overlap.
+  // Ask them to refresh before starting a new round.
+  if (request.headers.get("x-gurumi-client") !== "krug-overlap-v6") {
     return Response.json({ error: "게임이 업데이트됐습니다. 새로고침 후 다시 시작해 주세요." },
       { headers: RESPONSE_HEADERS, status: 409 });
   }
