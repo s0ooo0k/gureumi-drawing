@@ -121,7 +121,7 @@ function responseErrorMessage(body: unknown, fallback: string) {
 
 async function prepareRound() {
   const { body, response } = await fetchJsonWithTimeout("/api/gurumi/round", {
-    headers: { "X-Gurumi-Client": "krug-overlap-v6" },
+    headers: { "X-Gurumi-Client": "krug-overlap-v7" },
     method: "POST",
   });
   if (!response.ok) {

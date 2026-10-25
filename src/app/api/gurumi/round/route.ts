@@ -13,7 +13,7 @@ const RESPONSE_HEADERS = {
 export async function POST(request: Request) {
   // Previously opened pages use a different scorer and cannot show the overlap.
   // Ask them to refresh before starting a new round.
-  if (request.headers.get("x-gurumi-client") !== "krug-overlap-v6") {
+  if (request.headers.get("x-gurumi-client") !== "krug-overlap-v7") {
     return Response.json({ error: "게임이 업데이트됐습니다. 새로고침 후 다시 시작해 주세요." },
       { headers: RESPONSE_HEADERS, status: 409 });
   }

@@ -8,7 +8,7 @@ export type Stroke = {
 };
 
 export const GURUMI_SCORE_GRID_SIZE = 128;
-export const GURUMI_SCORE_VERSION = "reference-overlap-v6";
+export const GURUMI_SCORE_VERSION = "reference-overlap-v7";
 
 export const GURUMI_PART_IDS = [
   "body",
@@ -329,6 +329,43 @@ function buildReferenceEdges(imageData: ImageData) {
   return edges;
 }
 
+// Thin dark drawing ink to its centerline, rather than scoring both sides of
+// a thick printed outline. Zhang-Suen thinning preserves connected features.
+function buildReferenceInkCenterlines(imageData: ImageData) {
+  const { width, height, data } = imageData;
+  const ink = new Uint8Array(width * height);
+  for (let i = 0; i < ink.length; i++) {
+    const offset = i * 4;
+    const alpha = data[offset + 3] / 255;
+    const luminance = .2126 * data[offset] + .7152 * data[offset + 1] + .0722 * data[offset + 2];
+    ink[i] = alpha * luminance + (1 - alpha) * 255 < 85 ? 1 : 0;
+  }
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let phase = 0; phase < 2; phase++) {
+      const remove: number[] = [];
+      for (let y = 1; y < height - 1; y++) for (let x = 1; x < width - 1; x++) {
+        const i = y * width + x;
+        if (!ink[i]) continue;
+        const n = [ink[i - width], ink[i - width + 1], ink[i + 1], ink[i + width + 1],
+          ink[i + width], ink[i + width - 1], ink[i - 1], ink[i - width - 1]];
+        const count = n.reduce((sum, value) => sum + value, 0);
+        if (count < 2 || count > 6) continue;
+        let transitions = 0;
+        for (let j = 0; j < 8; j++) if (!n[j] && n[(j + 1) % 8]) transitions++;
+        if (transitions !== 1) continue;
+        const first = phase === 0 ? n[0] * n[2] * n[4] : n[0] * n[2] * n[6];
+        const second = phase === 0 ? n[2] * n[4] * n[6] : n[0] * n[4] * n[6];
+        if (!first && !second) remove.push(i);
+      }
+      if (remove.length) changed = true;
+      for (const i of remove) ink[i] = 0;
+    }
+  }
+  return ink;
+}
+
 function getMaskBounds(mask: Uint8Array, width: number, height: number): Bounds | null {
   let minX = width;
   let minY = height;
@@ -500,6 +537,7 @@ function rasterizeSegment(
   startY: number,
   endX: number,
   endY: number,
+  radius = 1,
 ) {
   const steps = Math.max(
     1,
@@ -508,7 +546,7 @@ function rasterizeSegment(
 
   for (let step = 0; step <= steps; step += 1) {
     const progress = step / steps;
-    stamp(mask, startX + (endX - startX) * progress, startY + (endY - startY) * progress);
+    stamp(mask, startX + (endX - startX) * progress, startY + (endY - startY) * progress, radius);
   }
 }
 
@@ -522,7 +560,7 @@ type DrawingTransform = {
   referenceCenterY: number;
 };
 
-function rasterizeStrokes(strokes: Stroke[], transform: DrawingTransform) {
+function rasterizeStrokes(strokes: Stroke[], transform: DrawingTransform, radius = 1) {
   const mask = new Uint8Array(GRID_SIZE * GRID_SIZE);
   const orientationCosine = new Float32Array(mask.length);
   const orientationSine = new Float32Array(mask.length);
@@ -557,11 +595,11 @@ function rasterizeStrokes(strokes: Stroke[], transform: DrawingTransform) {
   for (const stroke of strokes) {
     if (stroke.points.length === 0) continue;
     let previous = transformPoint(stroke.points[0]);
-    stamp(mask, previous.x, previous.y);
+    stamp(mask, previous.x, previous.y, radius);
 
     for (let index = 1; index < stroke.points.length; index += 1) {
       const current = transformPoint(stroke.points[index]);
-      rasterizeSegment(mask, previous.x, previous.y, current.x, current.y);
+      rasterizeSegment(mask, previous.x, previous.y, current.x, current.y, radius);
       const angle = Math.atan2(current.y - previous.y, current.x - previous.x);
       const steps = Math.max(
         1,
@@ -780,7 +818,7 @@ function findBestAlignedMask(
   };
   const matchSigma = reference.regions ? 2.5 : GLOBAL_MATCH_SIGMA;
   const orientationWeight = reference.regions ? .65 : .18;
-  const comparableMask = reference.regions ? dilate(reference.mask, 1) : reference.mask;
+  const comparableMask = overlapOnly ? referenceStrokeMask(reference.mask) : reference.regions ? dilate(reference.mask, 1) : reference.mask;
   const overlapReferenceDistances = overlapOnly ? distanceTransform(comparableMask) : reference.distances;
   const scaleFactors = [0.9, 1, 1.1] as const;
   const offsets = [-3, 0, 3] as const;
@@ -808,7 +846,7 @@ function findBestAlignedMask(
       userCenterX: 0, userCenterY: 0, referenceCenterX: 0, referenceCenterY: 0 }, penalty: 0 });
   }
   for (const { transform, penalty } of candidates) {
-    const rasterized = rasterizeStrokes(strokes, transform);
+    const rasterized = rasterizeStrokes(strokes, transform, overlapOnly ? 2 : 1);
     const mask = rasterized.mask;
     const userDistances = distanceTransform(mask);
     const precision = overlapOnly ? nearbyFraction(mask, overlapReferenceDistances) : directionalMatch(mask, reference.distances, matchSigma,
@@ -843,7 +881,7 @@ export function buildGurumiReferenceModel(imageData: ImageData, mode: "legacy" |
     throw new Error(`Reference image must be ${GRID_SIZE}x${GRID_SIZE}px.`);
   }
 
-  return buildGurumiReferenceModelFromMask(buildReferenceEdges(imageData), mode);
+  return buildGurumiReferenceModelFromMask(mode === "adaptive" ? buildReferenceInkCenterlines(imageData) : buildReferenceEdges(imageData), mode);
 }
 
 export function buildGurumiReferenceModelFromMask(mask: Uint8Array, mode: "legacy" | "adaptive" = "adaptive"): GurumiReferenceModel {
@@ -1158,8 +1196,14 @@ function clipMask(mask: Uint8Array, bounds: Bounds) {
 
 // Detect distinct nested ellipses, regardless of where or how large they are
 // drawn. Retracing one outline does not create an additional nested ring.
-// An equal-width line match, with the same three-pixel line width on both sides.
+// An equal-width line match, with the same five-pixel line width on both sides.
 // Both the displayed overlay and the server score use these exact masks.
+function referenceStrokeMask(centerline: Uint8Array) {
+  const mask = new Uint8Array(centerline.length);
+  for (let i = 0; i < centerline.length; i++) if (centerline[i]) stamp(mask, i % GRID_SIZE, Math.floor(i / GRID_SIZE), 2);
+  return mask;
+}
+
 export const GURUMI_OVERLAP_TOLERANCE = 0;
 
 function nearbyFraction(mask: Uint8Array, distances: Float32Array) {
@@ -1192,7 +1236,7 @@ export type GurumiOverlapComparison = {
 };
 
 export function compareGurumiDrawing(strokes: Stroke[], reference: GurumiReferenceModel): GurumiOverlapComparison {
-  const referenceMask = dilate(reference.mask, 1);
+  const referenceMask = referenceStrokeMask(reference.mask);
   const bounds = getRobustStrokeBounds(strokes, false);
   const alignment = bounds ? findBestAlignedMask(strokes, bounds, reference, true) : null;
   const userMask = alignment?.mask ?? new Uint8Array(referenceMask.length);
