@@ -327,8 +327,8 @@ for (const character of characters.GURUMI_CHARACTERS) {
   assert.ok(similarity.scoreDrawing(concentricEllipses(5, .38, .9), model).score <= 60, `${character.id}: generic loops must not score highly`);
   adaptiveModels.push({ model, traces, matched });
 }
-assert.ok(Math.max(...adaptiveModels.map(item => item.matched.score)) - Math.min(...adaptiveModels.map(item => item.matched.score)) <= 8, "Faithful contour scores must remain comparable across all 13 characters.");
-assert.equal(modelMasks.size, 13, "All 13 characters must use different reference masks.");
+assert.ok(Math.max(...adaptiveModels.map(item => item.matched.score)) - Math.min(...adaptiveModels.map(item => item.matched.score)) <= 8, "Faithful contour scores must remain comparable across all 15 characters.");
+assert.equal(modelMasks.size, 15, "All 15 characters must use different reference masks.");
 const architecture = adaptiveModels[1];
 const different = similarity.scoreDrawing(architecture.traces, adaptiveModels[12].model);
 assert.ok(architecture.matched.raw > different.raw + .1, "Architecture contours must score higher against Architecture than Women in Cloud.");
@@ -341,7 +341,7 @@ assert.equal(roundSession.verifyGurumiRoundSession(`${tampered}.${signedRound.to
 const legacyPayload = Buffer.from(JSON.stringify({ id: signedRound.id, version: 1, issuedAt: Date.now(), expiresAt: Date.now() + 60_000 })).toString("base64url");
 const legacySignature = crypto.createHmac("sha256", process.env.GURUMI_ROUND_SECRET).update(`ausgcon-2026-gurumi-round:${legacyPayload}`).digest("base64url");
 assert.equal(roundSession.readGurumiRoundSession(`${legacyPayload}.${legacySignature}`, signedRound.id).characterId, undefined);
-console.log("KRUG checks passed: 13 image-specific models, faithful/noisy/sparse/size/retracing/scribble fixtures, signed targets, and legacy compatibility.");
+console.log("KRUG checks passed: 15 image-specific models, faithful/noisy/sparse/size/retracing/scribble fixtures, signed targets, and legacy compatibility.");
 
 let scoredCharacter;
 let storedRecord;

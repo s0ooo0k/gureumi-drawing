@@ -782,7 +782,7 @@ export function GurumiGame() {
             <p className={styles.introLead}>
               오늘은 어떤 구르미를 그릴까요?
               <br />
-              AWSKRUG의 13가지 친구들, 30초 동안 자유롭게 따라 그려요.
+              15가지 구르미 친구들, 30초 동안 자유롭게 따라 그려요.
             </p>
 
             <div className={styles.ruleRow} aria-label="게임 규칙">
