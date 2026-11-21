@@ -8,7 +8,7 @@ export type Stroke = {
 };
 
 export const GURUMI_SCORE_GRID_SIZE = 128;
-export const GURUMI_SCORE_VERSION = "reference-overlap-v8";
+export const GURUMI_SCORE_VERSION = "reference-overlap-v9";
 
 export const GURUMI_PART_IDS = [
   "body",
@@ -1225,9 +1225,11 @@ function overlapRatio(precision: number, recall: number) {
 // close matches.
 const OVERLAP_SCORE_ANCHORS = [
   { overlap: 0, score: 0 },
-  { overlap: 0.20, score: 0.15 },
-  { overlap: 0.40, score: 0.60 },
-  { overlap: 0.65, score: 0.85 },
+  { overlap: 0.16, score: 0.06 },
+  { overlap: 0.23, score: 0.33 },
+  { overlap: 0.30, score: 0.612 },
+  { overlap: 0.42, score: 0.80 },
+  { overlap: 0.70, score: 0.94 },
   { overlap: 1, score: 1 },
 ] as const;
 
@@ -1243,6 +1245,32 @@ function calibrateOverlap(overlap: number) {
   return 1;
 }
 
+// Concentric rings and spirals spend most of their path perpendicular to the
+// radius from the drawing's center. Weight by length for sampling invariance.
+function tangentialStrokeFraction(strokes: Stroke[], bounds: Bounds, totalLength: number) {
+  if (totalLength === 0) return 0;
+
+  const centerX = (bounds.minX + bounds.maxX) / 2;
+  const centerY = (bounds.minY + bounds.maxY) / 2;
+  let tangentLength = 0;
+  for (const { points } of strokes) {
+    for (let index = 1; index < points.length; index += 1) {
+      const start = points[index - 1];
+      const end = points[index];
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const radiusX = (start.x + end.x) / 2 - centerX;
+      const radiusY = (start.y + end.y) / 2 - centerY;
+      const length = Math.hypot(dx, dy);
+      const radius = Math.hypot(radiusX, radiusY);
+      if (radius > 0 && Math.abs(dx * radiusX + dy * radiusY) <= 0.25 * length * radius) {
+        tangentLength += length;
+      }
+    }
+  }
+  return tangentLength / totalLength;
+}
+
 export type GurumiOverlapComparison = {
   referenceMask: Uint8Array;
   userMask: Uint8Array;
@@ -1252,11 +1280,19 @@ export type GurumiOverlapComparison = {
   recall: number;
   similarity: number;
   calibrated: number;
-  precisionLimit: number;
+  scoreLimit: number;
   score: number;
 };
 
 export function compareGurumiDrawing(strokes: Stroke[], reference: GurumiReferenceModel): GurumiOverlapComparison {
+  return compareAdaptiveDrawing(strokes, reference, analyzeStrokes(strokes));
+}
+
+function compareAdaptiveDrawing(
+  strokes: Stroke[],
+  reference: GurumiReferenceModel,
+  analysis: ReturnType<typeof analyzeStrokes>,
+): GurumiOverlapComparison {
   const referenceMask = referenceStrokeMask(reference.mask);
   const bounds = getRobustStrokeBounds(strokes, false);
   const alignment = bounds ? findBestAlignedMask(strokes, bounds, reference, true) : null;
@@ -1272,17 +1308,24 @@ export function compareGurumiDrawing(strokes: Stroke[], reference: GurumiReferen
   const precision = nearbyFraction(userMask, referenceDistances);
   const recall = nearbyFraction(referenceMask, userDistances);
   const similarity = overlapRatio(precision, recall);
-  // Broad scribbles can cover the outline by chance. Limit their score using
-  // the fraction of the player's own ink that actually matches.
-  const precisionLimit = precision * (0.8 + 0.2 * precision);
-  const calibrated = Math.min(calibrateOverlap(similarity), precisionLimit);
+  const density = countMaskPixels(userMask) / Math.max(1, countMaskPixels(referenceMask));
+  const tangentFraction = bounds ? tangentialStrokeFraction(strokes, bounds, analysis.strokeLength) : 0;
+  const repetitiveFraction = Math.max(analysis.dominantDirection, tangentFraction);
+  // Very dense marks, hatching and concentric curves can overlap by chance.
+  // Fade out the repetition limit when the outline itself is a close match.
+  const excessInk = smoothstep(1.08, 1.32, density);
+  const repetition = smoothstep(0.65, 0.92, repetitiveFraction) * (1 - smoothstep(0.48, 0.70, similarity));
+  const minimum = density > 0 ? 0.01 : 0;
+  const scoreLimit = Math.max(minimum, Math.min(1, 1.5 * precision, 1 - 0.60 * excessInk, 1 - 0.60 * repetition));
+  const calibrated = Math.max(minimum, Math.min(calibrateOverlap(similarity), scoreLimit));
+  const score = Math.round(calibrated * 100);
   return { referenceMask, userMask, matchedReferenceMask, matchedUserMask,
-    precision, recall, similarity, calibrated, precisionLimit, score: Math.round(calibrated * 100) };
+    precision, recall, similarity, calibrated, scoreLimit, score };
 }
 
 function scoreAdaptiveDrawing(strokes: Stroke[], reference: GurumiReferenceModel): SimilarityScore {
   const analysis = analyzeStrokes(strokes);
-  const match = compareGurumiDrawing(strokes, reference);
+  const match = compareAdaptiveDrawing(strokes, reference, analysis);
   const parts: Record<string, PartScore> = {};
   for (const region of reference.regions ?? []) {
     const user = clipMask(match.userMask, region.bounds);
@@ -1296,5 +1339,5 @@ function scoreAdaptiveDrawing(strokes: Stroke[], reference: GurumiReferenceModel
     structure: match.similarity, unmatchedInk: 1 - match.precision, poseCoverage: match.recall,
     densityRatio: countMaskPixels(match.userMask) / Math.max(1, countMaskPixels(match.referenceMask)),
     overdrawEfficiency: 1, orientationEntropy: analysis.orientationEntropy, loopMonotony: 0,
-    dominantDirection: analysis.dominantDirection, strokeLength: analysis.strokeLength, scoreCap: match.precisionLimit * 100, parts };
+    dominantDirection: analysis.dominantDirection, strokeLength: analysis.strokeLength, scoreCap: match.scoreLimit * 100, parts };
 }
