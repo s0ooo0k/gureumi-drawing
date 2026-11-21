@@ -2,11 +2,21 @@ import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getGurumiDatabaseConfig } from "./database-config";
-import { GURUMI_LEADERBOARD_LIMIT, isScoreRecord, type ScoreRecord } from "./records";
+import {
+  GURUMI_DEFAULT_GIFT_MIN_SCORE,
+  GURUMI_LEADERBOARD_LIMIT,
+  isGurumiGiftMinimumScore,
+  isScoreRecord,
+  type AdminScoreRecord,
+  type GurumiAdminData,
+  type ScoreRecord,
+} from "./records";
 import { GURUMI_SCORE_VERSION, type SimilarityScore } from "./similarity";
 
 const TABLE_NAME = "gurumi_scores";
+const GIFT_SETTINGS_TABLE = "gurumi_gift_settings";
 const SCORE_COLUMNS = "id,name,score,calibrated,raw,semantic,global_score,density_ratio,overdraw_efficiency,orientation_entropy,loop_monotony,part_scores,created_at,score_version,character_id";
+const ADMIN_SCORE_COLUMNS = `${SCORE_COLUMNS},gift_received` as const;
 let client: SupabaseClient | null = null;
 
 function getClient() {
@@ -33,16 +43,86 @@ function recordFromRow(row: Record<string, unknown>): ScoreRecord {
   return candidate;
 }
 
-export async function listGurumiScores(limit = GURUMI_LEADERBOARD_LIMIT, { allVersions = false } = {}) {
+function rankedScoreRows<Columns extends string>(columns: Columns) {
+  return getClient().from(TABLE_NAME).select(columns)
+    .order("score", { ascending: false })
+    .order("calibrated", { ascending: false })
+    .order("raw", { ascending: false })
+    .order("created_at", { ascending: true });
+}
+
+export async function listGurumiScores(limit = GURUMI_LEADERBOARD_LIMIT) {
   const safeLimit = Number.isFinite(limit)
     ? Math.min(GURUMI_LEADERBOARD_LIMIT, Math.max(1, Math.trunc(limit)))
     : GURUMI_LEADERBOARD_LIMIT;
-  let query = getClient().from(TABLE_NAME).select(SCORE_COLUMNS);
-  if (!allVersions) query = query.eq("score_version", GURUMI_SCORE_VERSION);
-  const { data, error } = await query.order("score", { ascending: false }).order("calibrated", { ascending: false })
-    .order("raw", { ascending: false }).order("created_at", { ascending: true }).limit(safeLimit);
+  const { data, error } = await rankedScoreRows(SCORE_COLUMNS)
+    .limit(safeLimit)
+    .eq("score_version", GURUMI_SCORE_VERSION);
   if (error) throw error;
   return (data ?? []).map(recordFromRow);
+}
+
+async function readGiftMinimumScore({ allowUnmigrated = false } = {}) {
+  const { data, error } = await getClient().from(GIFT_SETTINGS_TABLE).select("minimum_score")
+    .eq("singleton", true).single();
+  if (error) {
+    if (allowUnmigrated && (error.code === "42P01" || error.code === "PGRST205")) {
+      return GURUMI_DEFAULT_GIFT_MIN_SCORE;
+    }
+    throw error;
+  }
+  if (!isGurumiGiftMinimumScore(data.minimum_score)) throw new Error("Invalid Gurumi gift minimum score.");
+  return data.minimum_score;
+}
+
+export async function loadGurumiLeaderboard() {
+  const [leaderboard, giftMinimumScore] = await Promise.all([
+    listGurumiScores(),
+    readGiftMinimumScore({ allowUnmigrated: true }),
+  ]);
+  return { leaderboard, giftMinimumScore };
+}
+
+async function listGurumiAdminScores() {
+  const records: AdminScoreRecord[] = [];
+  for (;;) {
+    const { data, error } = await rankedScoreRows(ADMIN_SCORE_COLUMNS)
+      .order("id", { ascending: true })
+      .range(records.length, records.length + GURUMI_LEADERBOARD_LIMIT - 1);
+    if (error) throw error;
+
+    const page = data ?? [];
+    records.push(...page.map((row) => ({
+      ...recordFromRow(row),
+      giftReceived: row.gift_received === true,
+    })));
+    if (page.length < GURUMI_LEADERBOARD_LIMIT) return records;
+  }
+}
+
+export async function loadGurumiAdminData(): Promise<GurumiAdminData> {
+  const [records, giftMinimumScore, receipts] = await Promise.all([
+    listGurumiAdminScores(),
+    readGiftMinimumScore(),
+    getClient().from(TABLE_NAME).select("id", { count: "exact", head: true }).eq("gift_received", true),
+  ]);
+  if (receipts.error) throw receipts.error;
+  if (receipts.count === null) throw new Error("Gurumi gift receipt count is unavailable.");
+
+  return { records, giftMinimumScore, giftReceivedCount: receipts.count };
+}
+
+export async function updateGurumiGiftMinimumScore(minimumScore: number) {
+  const { error } = await getClient().from(GIFT_SETTINGS_TABLE).update({ minimum_score: minimumScore })
+    .eq("singleton", true).select("minimum_score").single();
+  if (error) throw error;
+}
+
+export async function updateGurumiGiftReceived(id: string, giftReceived: boolean) {
+  const { data, error } = await getClient().from(TABLE_NAME).update({ gift_received: giftReceived })
+    .eq("id", id).select("id").maybeSingle();
+  if (error) throw error;
+  return Boolean(data);
 }
 
 export async function findGurumiScore(id: string) {

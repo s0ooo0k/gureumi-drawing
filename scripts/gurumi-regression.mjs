@@ -116,6 +116,8 @@ for (const [score, eligible] of [[59, false], [60, true], [61, true]]) {
   assert.equal(records.qualifiesForGurumiGift({ score, scoreVersion: similarity.GURUMI_SCORE_VERSION }), eligible);
 }
 assert.equal(records.qualifiesForGurumiGift({ score: 100, scoreVersion: "reference-overlap-v8" }), false);
+assert.equal(records.qualifiesForGurumiGift({ score: 54, scoreVersion: similarity.GURUMI_SCORE_VERSION }, 54), true);
+for (const invalid of [0, 101, 60.5, "60", null]) assert.equal(records.isGurumiGiftMinimumScore(invalid), false);
 
 let drawingAuthenticated = false;
 let drawingReads = 0;
@@ -303,7 +305,7 @@ for (const character of characters.GURUMI_CHARACTERS) {
   for (const [label, drawing] of Object.entries({ hatch, spiral, scribble, cross })) {
     const score = similarity.scoreDrawing(drawing, model).score;
     assert.ok(score < matched.score - 25, `${character.id}: ${label} must be clearly below faithful contours (got ${score})`);
-    assert.ok(score < records.GURUMI_GIFT_MIN_SCORE, `${character.id}: ${label} must not qualify for a gift (got ${score})`);
+    assert.ok(score < records.GURUMI_DEFAULT_GIFT_MIN_SCORE, `${character.id}: ${label} must not qualify for a gift (got ${score})`);
   }
   // The displayed pixels still account for raw overlap, precision and recall.
   const overlay = matched.comparison;
@@ -339,7 +341,7 @@ for (const character of characters.GURUMI_CHARACTERS) {
   assert.deepEqual(Object.keys(matched.parts), [...similarity.ADAPTIVE_PART_IDS]);
   assert.equal(similarity.scoreDrawing([], model).score, 0);
   assert.equal(similarity.scoreDrawing([{ points: [{ x: 0.5, y: 0.5 }] }], model).score, 1);
-  assert.ok(similarity.scoreDrawing(concentricEllipses(5, .38, .9), model).score < records.GURUMI_GIFT_MIN_SCORE, `${character.id}: generic loops must not score highly`);
+  assert.ok(similarity.scoreDrawing(concentricEllipses(5, .38, .9), model).score < records.GURUMI_DEFAULT_GIFT_MIN_SCORE, `${character.id}: generic loops must not score highly`);
   adaptiveModels.push({ model, traces, matched });
 }
 assert.ok(Math.max(...adaptiveModels.map(item => item.matched.score)) - Math.min(...adaptiveModels.map(item => item.matched.score)) <= 8, "Faithful contour scores must remain comparable across all 15 characters.");
@@ -369,7 +371,8 @@ const scoresRoute = compileTypeScript("src/app/api/gurumi/scores/route.ts", (id)
   if (id === "@/lib/gurumi/stroke-codec") return { decodeStrokes: () => ({ strokes: [], pointCount: 0 }) };
   if (id === "@/lib/gurumi/round-session") return roundSession;
   if (id === "@/lib/gurumi/storage") return {
-    findGurumiScore: async () => null, listGurumiScores: async () => [],
+    findGurumiScore: async () => null,
+    loadGurumiLeaderboard: async () => ({ leaderboard: [], giftMinimumScore: 54 }),
     saveGurumiScore: async ({ record }) => { storedRecord = record; return record; },
   };
   throw new Error(`Unexpected import: ${id}`);
@@ -379,9 +382,37 @@ const submissionResponse = await scoresRoute.POST(new Request("https://example.c
   body: JSON.stringify({ id: signedRound.id, name: "구르미", roundToken: signedRound.token, strokes: "", characterId: "forged-target" }),
 }));
 assert.equal(submissionResponse.status, 201);
+assert.equal((await submissionResponse.json()).giftMinimumScore, 54);
+assert.equal((await (await scoresRoute.GET()).json()).giftMinimumScore, 54);
 assert.equal(scoredCharacter, signedRound.characterId, "Server scoring must use the signed target, ignoring a forged client target.");
 assert.equal(storedRecord.characterId, signedRound.characterId);
 console.log("Score API checks passed: server scoring and stored character match the signed round.");
+
+let giftAdminAuthenticated = false;
+const giftWrites = [];
+const adminActions = compileTypeScript("src/app/gurumi/admin/actions.ts", (id) => {
+  if (id === "@/lib/gurumi/admin-auth") return { isGurumiAdminAuthenticated: async () => giftAdminAuthenticated };
+  if (id === "@/lib/gurumi/records") return records;
+  if (id === "@/lib/gurumi/storage") return {
+    loadGurumiAdminData: async () => ({ records: [], giftMinimumScore: 54, giftReceivedCount: 1 }),
+    updateGurumiGiftMinimumScore: async (score) => { giftWrites.push(score); },
+    updateGurumiGiftReceived: async (recordId, received) => {
+      giftWrites.push([recordId, received]);
+      return true;
+    },
+  };
+  throw new Error(`Unexpected import: ${id}`);
+});
+assert.equal((await adminActions.setGurumiAdminGiftMinimumScore(54)).unauthorized, true);
+assert.equal((await adminActions.setGurumiAdminGiftReceived(signedRound.id, true)).unauthorized, true);
+giftAdminAuthenticated = true;
+assert.equal((await adminActions.setGurumiAdminGiftMinimumScore(101)).ok, false);
+assert.equal((await adminActions.setGurumiAdminGiftReceived(signedRound.id, "true")).ok, false);
+assert.equal(giftWrites.length, 0);
+assert.equal((await adminActions.setGurumiAdminGiftMinimumScore(54)).data.giftMinimumScore, 54);
+assert.equal((await adminActions.setGurumiAdminGiftReceived(signedRound.id, true)).data.giftReceivedCount, 1);
+assert.deepEqual(giftWrites, [54, [signedRound.id, true]]);
+console.log("Gift administration checks passed: authentication, input validation, and saved values.");
 
 const maskData = compileTypeScript("src/lib/gurumi/reference-mask-data.ts");
 const characterReference = compileTypeScript("src/lib/gurumi/character-reference.ts", id => {

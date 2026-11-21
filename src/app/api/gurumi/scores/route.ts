@@ -13,7 +13,7 @@ import {
 } from "@/lib/gurumi/round-session";
 import {
   findGurumiScore,
-  listGurumiScores,
+  loadGurumiLeaderboard,
   saveGurumiScore,
 } from "@/lib/gurumi/storage";
 
@@ -84,7 +84,7 @@ function normalizeSubmission(value: unknown): ScoreSubmission | null {
 export async function GET() {
   try {
     return Response.json(
-      { leaderboard: await listGurumiScores() },
+      await loadGurumiLeaderboard(),
       { headers: RESPONSE_HEADERS },
     );
   } catch (error) {
@@ -134,7 +134,7 @@ export async function POST(request: Request) {
     const existingRecord = await findGurumiScore(submission.id);
     if (existingRecord) {
       return Response.json(
-        { leaderboard: await listGurumiScores(), record: existingRecord },
+        { ...await loadGurumiLeaderboard(), record: existingRecord },
         { headers: RESPONSE_HEADERS, status: 200 },
       );
     }
@@ -167,9 +167,9 @@ export async function POST(request: Request) {
       strokes: submission.strokes,
       pointCount: decoded.pointCount,
     });
-    const leaderboard = await listGurumiScores();
+    const leaderboard = await loadGurumiLeaderboard();
 
-    return Response.json({ leaderboard, record }, { headers: RESPONSE_HEADERS, status: 201 });
+    return Response.json({ ...leaderboard, record }, { headers: RESPONSE_HEADERS, status: 201 });
   } catch (error) {
     console.error("Failed to save a Gurumi score.", error);
     return errorResponse("점수를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.", 503);

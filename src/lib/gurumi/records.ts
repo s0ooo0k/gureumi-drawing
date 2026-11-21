@@ -5,7 +5,7 @@ import {
 } from "./similarity";
 
 export const GURUMI_LEADERBOARD_LIMIT = 1_000;
-export const GURUMI_GIFT_MIN_SCORE = 60;
+export const GURUMI_DEFAULT_GIFT_MIN_SCORE = 60;
 
 export type ScoreRecord = {
   id: string;
@@ -25,8 +25,23 @@ export type ScoreRecord = {
   scoreVersion: string;
 };
 
-export function qualifiesForGurumiGift(record: Pick<ScoreRecord, "score" | "scoreVersion">) {
-  return record.scoreVersion === GURUMI_SCORE_VERSION && record.score >= GURUMI_GIFT_MIN_SCORE;
+export type AdminScoreRecord = ScoreRecord & { giftReceived: boolean };
+
+export type GurumiAdminData = {
+  records: AdminScoreRecord[];
+  giftMinimumScore: number;
+  giftReceivedCount: number;
+};
+
+export function isGurumiGiftMinimumScore(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 100;
+}
+
+export function qualifiesForGurumiGift(
+  record: Pick<ScoreRecord, "score" | "scoreVersion">,
+  minimumScore = GURUMI_DEFAULT_GIFT_MIN_SCORE,
+) {
+  return record.scoreVersion === GURUMI_SCORE_VERSION && record.score >= minimumScore;
 }
 
 export type ScoreSubmission = {
@@ -49,14 +64,12 @@ export type PendingScore = {
   submission: ScoreSubmission;
 };
 
-export type ScoreSubmissionResponse = {
-  leaderboard: ScoreRecord[];
-  record: ScoreRecord;
-};
-
 export type LeaderboardResponse = {
   leaderboard: ScoreRecord[];
+  giftMinimumScore: number;
 };
+
+export type ScoreSubmissionResponse = LeaderboardResponse & { record: ScoreRecord };
 
 export function normalizeGurumiName(value: unknown) {
   if (typeof value !== "string") return null;
@@ -170,7 +183,9 @@ export function isScoreRecord(value: unknown): value is ScoreRecord {
 export function isLeaderboardResponse(value: unknown): value is LeaderboardResponse {
   if (!value || typeof value !== "object") return false;
   const response = value as Partial<LeaderboardResponse>;
-  return Array.isArray(response.leaderboard) && response.leaderboard.every(isScoreRecord);
+  return Array.isArray(response.leaderboard) &&
+    response.leaderboard.every(isScoreRecord) &&
+    isGurumiGiftMinimumScore(response.giftMinimumScore);
 }
 
 export function isScoreSubmissionResponse(value: unknown): value is ScoreSubmissionResponse {

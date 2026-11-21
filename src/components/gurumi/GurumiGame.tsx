@@ -13,7 +13,6 @@ import {
 } from "@/lib/gurumi/similarity";
 import {
   createScoreRecord,
-  GURUMI_GIFT_MIN_SCORE,
   GURUMI_LEADERBOARD_LIMIT,
   isGurumiRoundSession,
   isLeaderboardResponse,
@@ -97,7 +96,7 @@ async function loadServerLeaderboard() {
   });
   if (!response.ok) throw new Error("Leaderboard request failed.");
   if (!isLeaderboardResponse(body)) throw new Error("Leaderboard response is invalid.");
-  return body.leaderboard;
+  return body;
 }
 
 class ScoreSubmissionError extends Error {
@@ -433,9 +432,13 @@ export function GurumiGame() {
   const [secondsLeft, setSecondsLeft] = useState(ROUND_DURATION / 1_000);
   const [referenceModel, setReferenceModel] = useState<GurumiReferenceModel | null>(null);
   const [records, setRecords] = useState<ScoreRecord[]>([]);
-  const [currentResult, setCurrentResult] = useState<{ record: ScoreRecord; saved: boolean } | null>(null);
+  const [giftMinimumScore, setGiftMinimumScore] = useState<number | null>(null);
+  const [currentResult, setCurrentResult] = useState<{
+    record: ScoreRecord;
+    storage: "pending" | "saved" | "failed";
+  } | null>(null);
   const currentRecord = currentResult?.record ?? null;
-  const resultSaved = currentResult?.saved ?? false;
+  const resultStorage = currentResult?.storage;
   const [comparison, setComparison] = useState<GurumiOverlapComparison | null>(null);
   const [storageMode, setStorageMode] = useState<StorageMode>("loading");
   const [roundSession, setRoundSession] = useState<GurumiRoundSession | null>(null);
@@ -477,13 +480,17 @@ export function GurumiGame() {
         try {
           const response = await submitScore(pending.submission);
           serverRecords = response.leaderboard;
+          setGiftMinimumScore(response.giftMinimumScore);
           setCurrentResult((current) =>
-            current?.record.id === response.record.id ? { record: response.record, saved: true } : current,
+            current?.record.id === response.record.id ? { record: response.record, storage: "saved" } : current,
           );
           await deletePendingGurumiScore(pending.id);
           pendingScores = pendingScores.filter((candidate) => candidate.id !== pending.id);
         } catch (error) {
           if (error instanceof ScoreSubmissionError && !error.retryable) {
+            setCurrentResult((current) => current?.record.id === pending.id && current.storage === "pending"
+              ? { ...current, storage: "failed" }
+              : current);
             await deletePendingGurumiScore(pending.id);
             pendingScores = pendingScores.filter((candidate) => candidate.id !== pending.id);
             rejectedCount += 1;
@@ -493,14 +500,18 @@ export function GurumiGame() {
         }
       }
 
-      serverRecords ??= await loadServerLeaderboard();
+      if (!serverRecords) {
+        const leaderboard = await loadServerLeaderboard();
+        serverRecords = leaderboard.leaderboard;
+        setGiftMinimumScore(leaderboard.giftMinimumScore);
+      }
       pendingScores = await listPendingGurumiScores();
       const nextRecords = mergeRecords(serverRecords, pendingScores);
       recordsRef.current = nextRecords;
       setRecords(nextRecords);
       setCurrentResult((current) => {
         const recorded = serverRecords?.find((record) => record.id === current?.record.id);
-        return recorded ? { record: recorded, saved: true } : current;
+        return recorded ? { record: recorded, storage: "saved" } : current;
       });
       persistRecords(nextRecords);
       setPendingCount(pendingScores.length);
@@ -561,12 +572,13 @@ export function GurumiGame() {
       roundToken: roundSession.token,
       strokes: encoded,
     };
-    setCurrentResult({ record: localRecord, saved: false });
+    setCurrentResult({ record: localRecord, storage: "pending" });
     let nextRecords: ScoreRecord[];
 
     try {
       const response = await submitScore(submission);
-      setCurrentResult({ record: response.record, saved: true });
+      setGiftMinimumScore(response.giftMinimumScore);
+      setCurrentResult({ record: response.record, storage: "saved" });
       nextRecords = sortRecords(response.leaderboard).slice(0, GURUMI_LEADERBOARD_LIMIT);
       await deletePendingGurumiScore(response.record.id);
       const remainingPending = await listPendingGurumiScores();
@@ -575,6 +587,11 @@ export function GurumiGame() {
       setStorageNotice("");
     } catch (error) {
       const retryable = !(error instanceof ScoreSubmissionError) || error.retryable;
+      const markFailed = () => setCurrentResult((current) =>
+        current?.record.id === localRecord.id && current.storage === "pending"
+          ? { ...current, storage: "failed" }
+          : current,
+      );
       if (retryable) {
         try {
           await savePendingGurumiScore({
@@ -584,9 +601,11 @@ export function GurumiGame() {
           });
           setStorageNotice("");
         } catch {
+          markFailed();
           setStorageNotice("이 기록을 자동 백업하지 못했습니다. 화면을 유지하고 운영진에게 알려주세요.");
         }
       } else {
+        markFailed();
         setStorageNotice(
           error instanceof Error
             ? error.message
@@ -795,7 +814,7 @@ export function GurumiGame() {
             <div className={styles.ruleRow} aria-label="게임 규칙">
               <span><b>01</b> 마우스로 그리기</span>
               <span><b>02</b> 제한 시간 30초</span>
-              <span><b>03</b> {GURUMI_GIFT_MIN_SCORE}점 이상 선물</span>
+              <span><b>03</b> {giftMinimumScore ? `${giftMinimumScore}점 이상 선물` : "자동 채점"}</span>
             </div>
 
             <div className={styles.entryForm}>
@@ -949,17 +968,17 @@ export function GurumiGame() {
               </div>
               <h2>{resultMessage(currentRecord.score)}</h2>
               <div className={styles.rankCopy}>
-                {resultSaved
+                {resultStorage === "saved"
                   ? currentRank === 1
                     ? "새로운 1위 기록이에요!"
                     : currentRank
                       ? `현재 ${currentRank}위예요. 순위는 행사 종료 전까지 바뀔 수 있어요.`
                       : "기록을 저장했어요."
-                  : "서버 저장을 기다리고 있어요."}
-                {qualifiesForGurumiGift(currentRecord) && (
+                  : resultStorage === "pending" ? "서버 저장을 기다리고 있어요." : "기록을 저장하지 못했어요."}
+                {resultStorage !== "failed" && giftMinimumScore !== null && qualifiesForGurumiGift(currentRecord, giftMinimumScore) && (
                   <div>
-                    <strong>{GURUMI_GIFT_MIN_SCORE}점 선물 기준 달성!</strong>{" "}
-                    {resultSaved ? "운영진에게 이 화면을 보여 주세요." : "기록이 저장되면 운영진에게 확인해 주세요."}
+                    <strong>{giftMinimumScore}점 선물 기준 달성!</strong>{" "}
+                    {resultStorage === "saved" ? "운영진에게 이 화면을 보여 주세요." : "기록이 저장되면 운영진에게 확인해 주세요."}
                   </div>
                 )}
               </div>
