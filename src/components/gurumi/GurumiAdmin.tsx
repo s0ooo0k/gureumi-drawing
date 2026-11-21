@@ -12,7 +12,11 @@ import {
   type GurumiAdminActionResult,
 } from "@/app/gurumi/admin/actions";
 import { characterLabel } from "@/lib/gurumi/characters";
-import type { ScoreRecord } from "@/lib/gurumi/records";
+import {
+  GURUMI_GIFT_MIN_SCORE,
+  qualifiesForGurumiGift,
+  type ScoreRecord,
+} from "@/lib/gurumi/records";
 
 import styles from "./GurumiAdmin.module.css";
 import { GurumiAwards } from "./GurumiAwards";
@@ -55,6 +59,7 @@ export function GurumiAdmin({
   const [drafts, setDrafts] = useState(() => draftsFromRecords(initialRecords));
   const [password, setPassword] = useState("");
   const [query, setQuery] = useState("");
+  const [giftsOnly, setGiftsOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [busyRecordId, setBusyRecordId] = useState<string | null>(null);
   const [notice, setNotice] = useState(initialError);
@@ -68,13 +73,14 @@ export function GurumiAdmin({
     () => records.map((record, index) => ({ rank: index + 1, record })),
     [records],
   );
+  const giftCount = records.filter(qualifiesForGurumiGift).length;
   const filteredRecords = useMemo(() => {
     const normalizedQuery = query.normalize("NFKC").trim().toLocaleLowerCase("ko-KR");
-    if (!normalizedQuery) return rankedRecords;
     return rankedRecords.filter(({ record }) =>
+      (!giftsOnly || qualifiesForGurumiGift(record)) &&
       `${record.name} ${record.id}`.toLocaleLowerCase("ko-KR").includes(normalizedQuery),
     );
-  }, [query, rankedRecords]);
+  }, [giftsOnly, query, rankedRecords]);
   const totalPages = Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const visibleRecords = filteredRecords.slice(
@@ -237,6 +243,16 @@ export function GurumiAdmin({
               />
             </label>
             <div>
+              <button
+                aria-pressed={giftsOnly}
+                onClick={() => {
+                  setGiftsOnly((current) => !current);
+                  setPage(1);
+                }}
+                type="button"
+              >
+                선물 대상 · {GURUMI_GIFT_MIN_SCORE}점 이상 ({giftCount}건)
+              </button>
               <button disabled={isPending || records.length === 0} onClick={() => setAwardIndex(0)} type="button">시상 화면 (1위부터)</button>
               <button disabled={isPending} onClick={handleRefresh} type="button">새로고침</button>
               <button disabled={isPending} onClick={handleLogout} type="button">로그아웃</button>
@@ -295,6 +311,7 @@ export function GurumiAdmin({
                             type="number"
                             value={draft.score}
                           />
+                          {qualifiesForGurumiGift(record) && <small>선물 대상</small>}
                         </td>
                         <td><small>{characterLabel(record.characterId)} · {record.scoreVersion}</small><br />{formatRecordedAt(record.createdAt)}</td>
                         <td><code title={record.id}>{record.id.slice(0, 8)}</code></td>
@@ -326,8 +343,7 @@ export function GurumiAdmin({
 
             {visibleRecords.length === 0 && (
               <div className={styles.emptyState}>
-                <strong>{records.length === 0 ? "아직 등록된 기록이 없습니다." : "검색 결과가 없습니다."}</strong>
-                <span>{records.length === 0 ? "참가자의 첫 기록을 기다리고 있어요." : "검색어를 바꿔보세요."}</span>
+                <strong>{records.length === 0 ? "아직 등록된 기록이 없습니다." : "조건에 맞는 기록이 없습니다."}</strong>
               </div>
             )}
 

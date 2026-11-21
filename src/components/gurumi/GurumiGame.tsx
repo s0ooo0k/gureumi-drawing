@@ -13,12 +13,14 @@ import {
 } from "@/lib/gurumi/similarity";
 import {
   createScoreRecord,
+  GURUMI_GIFT_MIN_SCORE,
   GURUMI_LEADERBOARD_LIMIT,
   isGurumiRoundSession,
   isLeaderboardResponse,
   isScoreRecord,
   isScoreSubmissionResponse,
   normalizeGurumiName,
+  qualifiesForGurumiGift,
   sortRecords,
   type GurumiRoundSession,
   type PendingScore,
@@ -121,7 +123,7 @@ function responseErrorMessage(body: unknown, fallback: string) {
 
 async function prepareRound() {
   const { body, response } = await fetchJsonWithTimeout("/api/gurumi/round", {
-    headers: { "X-Gurumi-Client": "krug-overlap-v7" },
+    headers: { "X-Gurumi-Client": GURUMI_SCORE_VERSION },
     method: "POST",
   });
   if (!response.ok) {
@@ -431,7 +433,9 @@ export function GurumiGame() {
   const [secondsLeft, setSecondsLeft] = useState(ROUND_DURATION / 1_000);
   const [referenceModel, setReferenceModel] = useState<GurumiReferenceModel | null>(null);
   const [records, setRecords] = useState<ScoreRecord[]>([]);
-  const [currentRecord, setCurrentRecord] = useState<ScoreRecord | null>(null);
+  const [currentResult, setCurrentResult] = useState<{ record: ScoreRecord; saved: boolean } | null>(null);
+  const currentRecord = currentResult?.record ?? null;
+  const resultSaved = currentResult?.saved ?? false;
   const [comparison, setComparison] = useState<GurumiOverlapComparison | null>(null);
   const [storageMode, setStorageMode] = useState<StorageMode>("loading");
   const [roundSession, setRoundSession] = useState<GurumiRoundSession | null>(null);
@@ -473,6 +477,9 @@ export function GurumiGame() {
         try {
           const response = await submitScore(pending.submission);
           serverRecords = response.leaderboard;
+          setCurrentResult((current) =>
+            current?.record.id === response.record.id ? { record: response.record, saved: true } : current,
+          );
           await deletePendingGurumiScore(pending.id);
           pendingScores = pendingScores.filter((candidate) => candidate.id !== pending.id);
         } catch (error) {
@@ -491,9 +498,10 @@ export function GurumiGame() {
       const nextRecords = mergeRecords(serverRecords, pendingScores);
       recordsRef.current = nextRecords;
       setRecords(nextRecords);
-      setCurrentRecord((current) =>
-        current ? nextRecords.find((record) => record.id === current.id) ?? current : null,
-      );
+      setCurrentResult((current) => {
+        const recorded = serverRecords?.find((record) => record.id === current?.record.id);
+        return recorded ? { record: recorded, saved: true } : current;
+      });
       persistRecords(nextRecords);
       setPendingCount(pendingScores.length);
       setStorageMode(pendingScores.length > 0 ? "offline" : "live");
@@ -553,14 +561,14 @@ export function GurumiGame() {
       roundToken: roundSession.token,
       strokes: encoded,
     };
-    let record = localRecord;
+    setCurrentResult({ record: localRecord, saved: false });
     let nextRecords: ScoreRecord[];
 
     try {
       const response = await submitScore(submission);
-      record = response.record;
+      setCurrentResult({ record: response.record, saved: true });
       nextRecords = sortRecords(response.leaderboard).slice(0, GURUMI_LEADERBOARD_LIMIT);
-      await deletePendingGurumiScore(record.id);
+      await deletePendingGurumiScore(response.record.id);
       const remainingPending = await listPendingGurumiScores();
       setPendingCount(remainingPending.length);
       setStorageMode(remainingPending.length > 0 ? "offline" : "live");
@@ -594,7 +602,6 @@ export function GurumiGame() {
       setStorageMode("offline");
     }
 
-    setCurrentRecord(record);
     recordsRef.current = nextRecords;
     setRecords(nextRecords);
     persistRecords(nextRecords);
@@ -691,7 +698,7 @@ export function GurumiGame() {
       revealTimeoutRef.current = null;
       canvasRef.current?.clear();
       setSecondsLeft(ROUND_DURATION / 1_000);
-      setCurrentRecord(null);
+      setCurrentResult(null);
       setComparison(null);
       setPhase("reveal");
     } catch (error) {
@@ -710,7 +717,7 @@ export function GurumiGame() {
     setName("");
     setRoundSession(null);
     setStartError("");
-    setCurrentRecord(null);
+    setCurrentResult(null);
     setComparison(null);
     setSecondsLeft(ROUND_DURATION / 1_000);
     setPhase("intro");
@@ -788,7 +795,7 @@ export function GurumiGame() {
             <div className={styles.ruleRow} aria-label="게임 규칙">
               <span><b>01</b> 마우스로 그리기</span>
               <span><b>02</b> 제한 시간 30초</span>
-              <span><b>03</b> 자동 채점</span>
+              <span><b>03</b> {GURUMI_GIFT_MIN_SCORE}점 이상 선물</span>
             </div>
 
             <div className={styles.entryForm}>
@@ -935,19 +942,27 @@ export function GurumiGame() {
         {phase === "result" && currentRecord && (
           <section className={styles.resultSection} ref={resultSectionRef}>
             <div className={styles.scoreCard}>
-              <p>겹침 점수 · {characterLabel(currentRecord.characterId)}</p>
+              <p>닮은꼴 점수 · {characterLabel(currentRecord.characterId)}</p>
               <div className={styles.scoreValue}>
                 <strong>{currentRecord.score}</strong>
                 <span>점</span>
               </div>
               <h2>{resultMessage(currentRecord.score)}</h2>
-              <p className={styles.rankCopy}>
-                {currentRank === 1
-                  ? "새로운 1위 기록이에요!"
-                  : currentRank
-                    ? `현재 ${currentRank}위예요. 순위는 행사 종료 전까지 바뀔 수 있어요.`
-                    : "기록을 저장했어요."}
-              </p>
+              <div className={styles.rankCopy}>
+                {resultSaved
+                  ? currentRank === 1
+                    ? "새로운 1위 기록이에요!"
+                    : currentRank
+                      ? `현재 ${currentRank}위예요. 순위는 행사 종료 전까지 바뀔 수 있어요.`
+                      : "기록을 저장했어요."
+                  : "서버 저장을 기다리고 있어요."}
+                {qualifiesForGurumiGift(currentRecord) && (
+                  <div>
+                    <strong>{GURUMI_GIFT_MIN_SCORE}점 선물 기준 달성!</strong>{" "}
+                    {resultSaved ? "운영진에게 이 화면을 보여 주세요." : "기록이 저장되면 운영진에게 확인해 주세요."}
+                  </div>
+                )}
+              </div>
               <button onClick={resetForNextParticipant} type="button">
                 다음 참가자 <span aria-hidden="true">→</span>
               </button>

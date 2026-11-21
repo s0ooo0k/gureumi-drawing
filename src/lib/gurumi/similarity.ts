@@ -8,7 +8,7 @@ export type Stroke = {
 };
 
 export const GURUMI_SCORE_GRID_SIZE = 128;
-export const GURUMI_SCORE_VERSION = "reference-overlap-v7";
+export const GURUMI_SCORE_VERSION = "reference-overlap-v8";
 
 export const GURUMI_PART_IDS = [
   "body",
@@ -1194,8 +1194,6 @@ function clipMask(mask: Uint8Array, bounds: Bounds) {
   return clipped;
 }
 
-// Detect distinct nested ellipses, regardless of where or how large they are
-// drawn. Retracing one outline does not create an additional nested ring.
 // An equal-width line match, with the same five-pixel line width on both sides.
 // Both the displayed overlay and the server score use these exact masks.
 function referenceStrokeMask(centerline: Uint8Array) {
@@ -1217,11 +1215,32 @@ function nearbyFraction(mask: Uint8Array, distances: Float32Array) {
 }
 
 // Exact intersection over union of equal-width lines, expressed through precision/recall.
-// No hidden feature weights, effort penalties, score caps, or character bonuses.
 function overlapRatio(precision: number, recall: number) {
   const intersection = precision * recall;
   const union = precision + recall - intersection;
   return union > 0 ? intersection / union : 0;
+}
+
+// Spread out the overlaps seen in play while reserving the upper range for
+// close matches.
+const OVERLAP_SCORE_ANCHORS = [
+  { overlap: 0, score: 0 },
+  { overlap: 0.20, score: 0.15 },
+  { overlap: 0.40, score: 0.60 },
+  { overlap: 0.65, score: 0.85 },
+  { overlap: 1, score: 1 },
+] as const;
+
+function calibrateOverlap(overlap: number) {
+  for (let index = 1; index < OVERLAP_SCORE_ANCHORS.length; index += 1) {
+    const lower = OVERLAP_SCORE_ANCHORS[index - 1];
+    const upper = OVERLAP_SCORE_ANCHORS[index];
+    if (overlap <= upper.overlap) {
+      const fraction = (overlap - lower.overlap) / (upper.overlap - lower.overlap);
+      return lower.score + fraction * (upper.score - lower.score);
+    }
+  }
+  return 1;
 }
 
 export type GurumiOverlapComparison = {
@@ -1232,6 +1251,8 @@ export type GurumiOverlapComparison = {
   precision: number;
   recall: number;
   similarity: number;
+  calibrated: number;
+  precisionLimit: number;
   score: number;
 };
 
@@ -1251,8 +1272,12 @@ export function compareGurumiDrawing(strokes: Stroke[], reference: GurumiReferen
   const precision = nearbyFraction(userMask, referenceDistances);
   const recall = nearbyFraction(referenceMask, userDistances);
   const similarity = overlapRatio(precision, recall);
+  // Broad scribbles can cover the outline by chance. Limit their score using
+  // the fraction of the player's own ink that actually matches.
+  const precisionLimit = precision * (0.8 + 0.2 * precision);
+  const calibrated = Math.min(calibrateOverlap(similarity), precisionLimit);
   return { referenceMask, userMask, matchedReferenceMask, matchedUserMask,
-    precision, recall, similarity, score: Math.round(similarity * 100) };
+    precision, recall, similarity, calibrated, precisionLimit, score: Math.round(calibrated * 100) };
 }
 
 function scoreAdaptiveDrawing(strokes: Stroke[], reference: GurumiReferenceModel): SimilarityScore {
@@ -1266,10 +1291,10 @@ function scoreAdaptiveDrawing(strokes: Stroke[], reference: GurumiReferenceModel
     const recall = nearbyFraction(expected, distanceTransform(user));
     parts[region.id] = { score: overlapRatio(precision, recall), precision, recall };
   }
-  return { comparison: match, score: match.score, calibrated: match.similarity, raw: match.similarity,
+  return { comparison: match, score: match.score, calibrated: match.calibrated, raw: match.similarity,
     semantic: match.recall, global: match.similarity, precision: match.precision, recall: match.recall,
     structure: match.similarity, unmatchedInk: 1 - match.precision, poseCoverage: match.recall,
     densityRatio: countMaskPixels(match.userMask) / Math.max(1, countMaskPixels(match.referenceMask)),
     overdrawEfficiency: 1, orientationEntropy: analysis.orientationEntropy, loopMonotony: 0,
-    dominantDirection: analysis.dominantDirection, strokeLength: analysis.strokeLength, scoreCap: 100, parts };
+    dominantDirection: analysis.dominantDirection, strokeLength: analysis.strokeLength, scoreCap: match.precisionLimit * 100, parts };
 }

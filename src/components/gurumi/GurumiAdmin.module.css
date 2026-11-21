@@ -259,6 +259,7 @@
   cursor: pointer;
 }
 
+.toolbar button[aria-pressed="true"],
 .toolbar button:hover:not(:disabled),
 .pagination button:hover:not(:disabled) {
   background: var(--admin-lime);

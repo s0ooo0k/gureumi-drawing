@@ -5,6 +5,7 @@ import {
 } from "./similarity";
 
 export const GURUMI_LEADERBOARD_LIMIT = 1_000;
+export const GURUMI_GIFT_MIN_SCORE = 60;
 
 export type ScoreRecord = {
   id: string;
@@ -23,6 +24,10 @@ export type ScoreRecord = {
   createdAt: string;
   scoreVersion: string;
 };
+
+export function qualifiesForGurumiGift(record: Pick<ScoreRecord, "score" | "scoreVersion">) {
+  return record.scoreVersion === GURUMI_SCORE_VERSION && record.score >= GURUMI_GIFT_MIN_SCORE;
+}
 
 export type ScoreSubmission = {
   id: string;

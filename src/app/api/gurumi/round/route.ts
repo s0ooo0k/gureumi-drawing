@@ -2,6 +2,7 @@ import {
   createGurumiRoundSession,
   takeGurumiRateLimit,
 } from "@/lib/gurumi/round-session";
+import { GURUMI_SCORE_VERSION } from "@/lib/gurumi/similarity";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -11,9 +12,8 @@ const RESPONSE_HEADERS = {
 };
 
 export async function POST(request: Request) {
-  // Previously opened pages use a different scorer and cannot show the overlap.
-  // Ask them to refresh before starting a new round.
-  if (request.headers.get("x-gurumi-client") !== "krug-overlap-v7") {
+  // Require the same scoring version before starting a new round.
+  if (request.headers.get("x-gurumi-client") !== GURUMI_SCORE_VERSION) {
     return Response.json({ error: "게임이 업데이트됐습니다. 새로고침 후 다시 시작해 주세요." },
       { headers: RESPONSE_HEADERS, status: 409 });
   }
