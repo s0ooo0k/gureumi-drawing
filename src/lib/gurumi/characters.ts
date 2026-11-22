@@ -16,6 +16,9 @@ export const GURUMI_CHARACTERS = [
   { id: "women-in-cloud", name: "Women in Cloud", group: "Women in Cloud 소모임", description: "클라우드에서 성장하는 여성들의 경험과 응원을 나눠요." },
 ] as const;
 export type GurumiCharacterId = (typeof GURUMI_CHARACTERS)[number]["id"];
+// Reference masks that keep the outline of solid fills (Kiro's black eyes vanish when thinned).
+// Other characters keep the masks their recorded scores were computed with.
+export const GURUMI_OUTLINE_SOLID_FILL_IDS: readonly GurumiCharacterId[] = ["kiro"];
 export function isGurumiCharacterId(value: unknown): value is GurumiCharacterId {
   return GURUMI_CHARACTERS.some((character) => character.id === value);
 }

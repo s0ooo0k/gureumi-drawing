@@ -282,7 +282,8 @@ for (const character of characters.GURUMI_CHARACTERS) {
     .flatten({ background: "#ffffff" })
     .resize(similarity.GURUMI_SCORE_GRID_SIZE, similarity.GURUMI_SCORE_GRID_SIZE, { fit: "fill", kernel: sharp.kernel.cubic })
     .ensureAlpha(1).raw().toBuffer({ resolveWithObject: true });
-  const model = similarity.buildGurumiReferenceModel({ data: new Uint8ClampedArray(data), width: info.width, height: info.height }, "adaptive");
+  const model = similarity.buildGurumiReferenceModel({ data: new Uint8ClampedArray(data), width: info.width, height: info.height }, "adaptive",
+    { outlineSolidFills: characters.GURUMI_OUTLINE_SOLID_FILL_IDS.includes(character.id) });
   assert.ok(model.pixelCount > 100, `${character.id}: expected visible reference edges`);
   modelMasks.add(crypto.createHash("sha256").update(model.mask).digest("hex"));
   const traces = traceEdges(model.mask, info.width);
@@ -452,6 +453,18 @@ const characterReference = compileTypeScript("src/lib/gurumi/character-reference
 for (let i = 0; i < characters.GURUMI_CHARACTERS.length; i++) {
   assert.deepEqual(characterReference.getGurumiCharacterReference(characters.GURUMI_CHARACTERS[i].id).mask,
     adaptiveModels[i].model.mask, "Browser and server must use the same canonical source mask.");
+}
+{
+  // Kiro's eyes are solid black: a drawn eye must earn credit instead of counting as stray ink.
+  const kiroIndex = characters.GURUMI_CHARACTERS.findIndex(character => character.id === "kiro");
+  const kiro = characterReference.getGurumiCharacterReference("kiro");
+  const inEyeBox = point => point.x > .48 && point.x < .74 && point.y > .29 && point.y < .47;
+  const outline = adaptiveModels[kiroIndex].traces.map(stroke => ({ points: stroke.points.filter(point => !inEyeBox(point)) }))
+    .filter(stroke => stroke.points.length > 1);
+  const withEyes = [...outline, ellipse(.54, .38, .042, .065), ellipse(.685, .38, .042, .065)];
+  const outlineScore = similarity.scoreDrawing(outline, kiro).score;
+  const eyesScore = similarity.scoreDrawing(withEyes, kiro).score;
+  assert.ok(eyesScore >= 85 && eyesScore > outlineScore, `kiro: drawing the eyes must raise the score (outline ${outlineScore}, with eyes ${eyesScore})`);
 }
 const serverScoring = compileTypeScript("src/lib/gurumi/server-score.ts", (id) => {
   if (id === "server-only") return {};
