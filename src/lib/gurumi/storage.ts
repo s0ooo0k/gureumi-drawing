@@ -82,6 +82,7 @@ async function readGiftMinimumScore({ allowUnmigrated = false } = {}) {
 export async function listGurumiTopDrawings(limit = GURUMI_TOP_DRAWING_LIMIT) {
   const { data, error } = await rankedScoreRows("id,strokes")
     .eq("score_version", GURUMI_SCORE_VERSION)
+    .eq("is_visible", true)
     .limit(limit);
   if (error) throw error;
   return (data ?? []).map((row) => ({ id: String(row.id), strokes: String(row.strokes) }));
