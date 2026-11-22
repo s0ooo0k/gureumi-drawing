@@ -1717,9 +1717,11 @@
 @media (max-width: 760px) { .rankArt { max-width: 180px; } }
 .resultSection .rankArt { max-width: 180px; }
 
-/* Game screen on narrow widths: hide top doodles that sit behind the status bar. */
-@media (max-width: 760px) {
-  .gridBackdrop[data-animated="false"] .doodleSun,
-  .gridBackdrop[data-animated="false"] .doodleRainbow,
-  .gridBackdrop[data-animated="false"] .doodleClouds { display: none; }
+/* Game screen: hide top doodles that sit behind the status bar at every width. */
+.gridBackdrop[data-animated="false"] .doodleSun,
+.gridBackdrop[data-animated="false"] .doodleRainbow,
+.gridBackdrop[data-animated="false"] .doodleClouds { display: none; }
+/* The star only collides with TIME LEFT above 760px; below that it sits lower down. */
+@media (min-width: 761px) {
+  .gridBackdrop[data-animated="false"] .doodleStar { display: none; }
 }
