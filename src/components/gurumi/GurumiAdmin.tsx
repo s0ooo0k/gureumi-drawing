@@ -11,7 +11,7 @@ import {
   setGurumiAdminGiftMinimumScore,
   setGurumiAdminGiftReceived,
   setGurumiAdminRecordVisibility,
-  updateGurumiAdminRecord,
+  updateGurumiAdminRecordName,
   type GurumiAdminActionResult,
 } from "@/app/gurumi/admin/actions";
 import { characterLabel } from "@/lib/gurumi/characters";
@@ -33,12 +33,11 @@ const PAGE_SIZE = GURUMI_VISIBILITY_BATCH_LIMIT;
 
 type RecordDraft = {
   name: string;
-  score: string;
 };
 
 function draftsFromRecords(records: ScoreRecord[]) {
   return Object.fromEntries(
-    records.map((record) => [record.id, { name: record.name, score: String(record.score) }]),
+    records.map((record) => [record.id, { name: record.name }]),
   ) as Record<string, RecordDraft>;
 }
 
@@ -175,7 +174,7 @@ export function GurumiAdmin({
       if (keepDrafts) {
         for (const record of data?.records ?? []) {
           const draft = current[record.id];
-          if (next[record.id] && draft && (draft.name !== record.name || draft.score !== String(record.score))) {
+          if (next[record.id] && draft && draft.name !== record.name) {
             next[record.id] = draft;
           }
         }
@@ -265,11 +264,7 @@ export function GurumiAdmin({
     setBusyRecordId(record.id);
     setNotice("");
     startTransition(async () => {
-      const result = await updateGurumiAdminRecord({
-        id: record.id,
-        name: draft.name,
-        score: Number(draft.score),
-      });
+      const result = await updateGurumiAdminRecordName({ id: record.id, name: draft.name });
       handleResult(result);
       setBusyRecordId(null);
     });
@@ -334,7 +329,7 @@ export function GurumiAdmin({
             <div>
               <p>GURUMI RECORDS</p>
               <h1>참가 기록 관리</h1>
-              <span>닉네임과 표시 점수를 수정하거나 잘못 등록된 기록을 삭제할 수 있습니다.</span>
+              <span>닉네임을 수정하거나 잘못 등록된 기록을 삭제할 수 있습니다. 점수는 자동 채점값이라 수정할 수 없습니다.</span>
             </div>
             <div className={styles.summary}>
               <span>TOTAL RECORDS</span>
@@ -505,11 +500,8 @@ export function GurumiAdmin({
                 </thead>
                 <tbody>
                   {visibleRecords.map(({ rank, index, record }) => {
-                    const draft = drafts[record.id] ?? {
-                      name: record.name,
-                      score: String(record.score),
-                    };
-                    const dirty = draft.name !== record.name || draft.score !== String(record.score);
+                    const draft = drafts[record.id] ?? { name: record.name };
+                    const dirty = draft.name !== record.name;
                     const busy = busyRecordId === record.id;
                     return (
                       <tr data-dirty={dirty ? "true" : undefined} key={record.id}>
@@ -534,17 +526,7 @@ export function GurumiAdmin({
                           />
                         </td>
                         <td>
-                          <label className={styles.visuallyHidden} htmlFor={`score-${record.id}`}>
-                            {record.name} 점수
-                          </label>
-                          <input
-                            id={`score-${record.id}`}
-                            max={100}
-                            min={0}
-                            onChange={(event) => updateDraft(record.id, { score: event.target.value })}
-                            type="number"
-                            value={draft.score}
-                          />
+                          <b>{record.score}</b>
                         </td>
                         <td>
                           <button
@@ -619,7 +601,7 @@ export function GurumiAdmin({
           </section>
 
           <p className={styles.dataNote}>
-            점수를 수정해도 참가자가 그린 선 좌표와 자동 채점 상세값은 그대로 보존됩니다.
+            점수는 서버가 서명된 라운드로 채점한 값이며 관리자 화면에서 수정할 수 없습니다.
           </p>
         </div>
       )}

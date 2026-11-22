@@ -20,7 +20,7 @@ import {
   loadGurumiAdminData,
   updateGurumiGiftMinimumScore,
   updateGurumiGiftReceived,
-  updateGurumiScore,
+  updateGurumiName,
   updateGurumiScoreVisibility,
 } from "@/lib/gurumi/storage";
 
@@ -73,28 +73,27 @@ export async function refreshGurumiAdminRecords(): Promise<GurumiAdminActionResu
   }
 }
 
-export async function updateGurumiAdminRecord(input: {
+// 점수는 서버 채점값이라 관리자도 바꿀 수 없다. 입력에 score가 섞여 와도 읽지 않는다.
+export async function updateGurumiAdminRecordName(input: {
   id: string;
   name: string;
-  score: number;
 }): Promise<GurumiAdminActionResult> {
   if (!(await isGurumiAdminAuthenticated())) return unauthorizedResult();
   const name = normalizeGurumiName(input.name);
-  const score = Number(input.score);
-  if (!isGurumiRecordId(input.id) || !name || !Number.isInteger(score) || score < 0 || score > 100) {
-    return { ok: false, error: "닉네임은 2–10자, 점수는 0–100의 정수로 입력해 주세요." };
+  if (!isGurumiRecordId(input.id) || !name) {
+    return { ok: false, error: "닉네임은 2–10자로 입력해 주세요." };
   }
 
   try {
-    const updated = await updateGurumiScore({ id: input.id, name, score });
+    const updated = await updateGurumiName({ id: input.id, name });
     if (!updated) return { ok: false, error: "수정할 기록을 찾지 못했습니다." };
     return {
       ok: true,
       data: await loadGurumiAdminData(),
-      message: `${name} 기록을 수정했습니다.`,
+      message: `${name} 닉네임을 수정했습니다.`,
     };
   } catch {
-    return { ok: false, error: "기록을 수정하지 못했습니다." };
+    return { ok: false, error: "닉네임을 수정하지 못했습니다." };
   }
 }
 

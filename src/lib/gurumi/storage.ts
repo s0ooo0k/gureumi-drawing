@@ -158,8 +158,8 @@ export async function findGurumiDrawing(id: string) {
   return data ? { strokes: String(data.strokes) } : null;
 }
 
-export async function updateGurumiScore({ id, name, score }: { id: string; name: string; score: number }) {
-  const { data, error } = await getClient().from(TABLE_NAME).update({ name, score })
+export async function updateGurumiName({ id, name }: { id: string; name: string }) {
+  const { data, error } = await getClient().from(TABLE_NAME).update({ name })
     .eq("id", id).select(SCORE_COLUMNS).maybeSingle();
   if (error) throw error;
   return data ? recordFromRow(data) : null;
