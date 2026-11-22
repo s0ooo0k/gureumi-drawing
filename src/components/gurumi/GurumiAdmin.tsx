@@ -85,14 +85,11 @@ export function GurumiAdmin({
   const draftMinimum = Number(minimumScoreDraft ?? minimumScore);
   const rankedRecords = useMemo(() => {
     let rank = 0;
-    return data?.records.map((record, index) => ({ rank: record.isVisible ? ++rank : null, index, record })) ?? [];
+    return data?.records.map((record, index) => ({ rank: record.isVisible && record.scoreVersion === GURUMI_SCORE_VERSION ? ++rank : null, index, record })) ?? [];
   }, [data]);
-  const publicRecords = useMemo(() => data?.records.filter((record) => record.isVisible) ?? [], [data]);
+  const publicRecords = useMemo(() => data?.records.filter((record) => record.isVisible && record.scoreVersion === GURUMI_SCORE_VERSION) ?? [], [data]);
   const awardRecords = awardSelection?.ceremony ? publicRecords : records;
-  const currentScores = useMemo(
-    () => publicRecords.filter((record) => record.scoreVersion === GURUMI_SCORE_VERSION),
-    [publicRecords],
-  );
+  const currentScores = publicRecords;
   const giftCount = currentScores.filter((record) => qualifiesForGurumiGift(record, minimumScore)).length;
   const eligibleRate = currentScores.length ? Math.round((100 * giftCount) / currentScores.length) : 0;
   const draftGiftCount = currentScores.filter((record) => qualifiesForGurumiGift(record, draftMinimum)).length;
