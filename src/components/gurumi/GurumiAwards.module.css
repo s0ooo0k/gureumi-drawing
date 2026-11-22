@@ -24,18 +24,18 @@
 .dialog button:focus-visible, .dialog select:focus-visible { outline: 3px solid #527900; outline-offset: 3px; }
 .dialog button:disabled { opacity: .35; cursor: default; }
 .stage { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); align-items: center; gap: 5vw; padding-block: 24px; }
-.winner > p { margin: 0; color: #527900; font-size: clamp(18px, 2.4vw, 36px); font-weight: 650; }
+.winner > p { margin: 0; color: #527900; font-size: clamp(18px, min(2.4vw, 3vh), 36px); font-weight: 650; }
 .rank { display: flex; align-items: baseline; gap: 12px; color: #527900; }
-.rank strong { font-family: var(--font-unbounded), sans-serif; font-size: clamp(72px, min(13vw, 19vh), 210px); font-weight: 800; line-height: 1.2; letter-spacing: -.06em; }
+.rank strong { font-family: var(--font-unbounded), sans-serif; font-size: clamp(56px, min(13vw, calc(20vh - 36px)), 210px); font-weight: 800; line-height: 1.2; letter-spacing: -.06em; }
 .rank > span { font-size: clamp(25px, 4vw, 56px); font-weight: 700; }
-.winner h2 { margin: 12px 0; font-size: clamp(30px, min(5vw, 7vh), 78px); font-weight: 750; line-height: 1.25; overflow-wrap: anywhere; letter-spacing: -.04em; }
-.score { font-size: clamp(28px, 4vw, 62px); font-weight: 700; }
+.winner h2 { margin: 8px 0; font-size: clamp(26px, min(5vw, 5.5vh), 78px); font-weight: 750; line-height: 1.25; overflow-wrap: anywhere; letter-spacing: -.04em; }
+.score { font-size: clamp(28px, min(4vw, 5.5vh), 62px); font-weight: 700; }
 .score > span { margin-left: 8px; font-size: .48em; font-weight: 500; }
-.reference { display: flex; align-items: center; gap: 18px; margin-top: 24px; }
-.reference img { width: clamp(72px, 10vw, 130px); height: auto; border-radius: 14px; }
+.reference { display: flex; align-items: center; gap: 18px; margin-top: 12px; }
+.reference img { width: clamp(56px, min(10vw, 9vh), 130px); height: auto; border-radius: 14px; }
 .reference > span { color: #697078; font-size: 14px; line-height: 1.7; }
 .artwork { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 0; margin: 0; }
-.drawing, .drawingMessage { width: min(100%, calc(100dvh - 230px)); aspect-ratio: 1; height: auto; background: white; border: 1px solid #d5d9cd; border-radius: 18px; box-shadow: 0 16px 48px #182a0710; }
+.drawing, .drawingMessage { width: min(100%, calc(100dvh - 270px)); aspect-ratio: 1; height: auto; background: white; border: 1px solid #d5d9cd; border-radius: 18px; box-shadow: 0 16px 48px #182a0710; }
 .drawingMessage { display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 28px; text-align: center; gap: 16px; }
 .artwork figcaption { margin-top: 12px; color: #697078; font-size: 15px; }
 .blankNote { position: absolute; top: 45%; color: #697078; }
