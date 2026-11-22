@@ -1561,6 +1561,8 @@
 .leaderboard::after { background-image: url('/assets/sketchbook/green-frame.svg'); }
 /* overflow:hidden clipped the frame's outer 5px; padding keeps content inside the hand-drawn lines. */
 .leaderboard { overflow: visible; padding: max(16px, 1.6%) max(16px, 1.6%) 28px; }
+/* Same fix for the game panels: children are width:100%, so padding only shrinks them and nothing can overflow. */
+.referencePanel, .canvasPanel { overflow: visible; padding: max(16px, 1.6%); }
 .leaderboardHeading { background: #fff6d4; color: #365b46; border-bottom-color: #c6b876; }
 .panelHeading { background: #f4f7f1; color: #405b4a; border-bottom-color: #b2c1ad; }
 .canvasPanel .panelHeading { background: #fff; }
