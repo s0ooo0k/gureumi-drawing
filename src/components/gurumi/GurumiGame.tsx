@@ -46,6 +46,7 @@ import { GURUMI_CHARACTERS, characterImage, characterLabel, getGurumiCharacter }
 const SCORE_STORAGE_KEY = "ausgcon-2026-gurumi-scores-semantic-v2";
 const ROUND_DURATION = 30_000;
 const LEADERBOARD_REFRESH_INTERVAL = 10_000;
+const RESULT_AUTO_RETURN_MS = 10_000;
 
 const PART_LABELS: Record<string, string> = {
   upperLeft: "왼쪽 위", upperCenter: "가운데 위", upperRight: "오른쪽 위",
@@ -472,6 +473,7 @@ export function GurumiGame() {
   const currentRecord = currentResult?.record ?? null;
   const resultStorage = currentResult?.storage;
   const [comparison, setComparison] = useState<GurumiOverlapComparison | null>(null);
+  const [autoReturnSeconds, setAutoReturnSeconds] = useState(RESULT_AUTO_RETURN_MS / 1_000);
   const [storageMode, setStorageMode] = useState<StorageMode>("loading");
   const [roundSession, setRoundSession] = useState<GurumiRoundSession | null>(null);
   const [roundStarting, setRoundStarting] = useState(false);
@@ -722,6 +724,33 @@ export function GurumiGame() {
     return () => window.cancelAnimationFrame(frame);
   }, [phase]);
 
+  // 선물 대상이 아니고 저장까지 끝난 결과만 자동 복귀한다. pending/failed는 운영진 확인용으로 유지.
+  const shouldAutoReturn =
+    phase === "result" &&
+    resultStorage === "saved" &&
+    giftMinimumScore !== null &&
+    currentRecord !== null &&
+    !qualifiesForGurumiGift(currentRecord, giftMinimumScore);
+  const resetForNextParticipantRef = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    if (!shouldAutoReturn) return;
+    const startedAt = performance.now();
+    setAutoReturnSeconds(RESULT_AUTO_RETURN_MS / 1_000);
+
+    const interval = window.setInterval(() => {
+      const remaining = RESULT_AUTO_RETURN_MS - (performance.now() - startedAt);
+      if (remaining <= 0) {
+        window.clearInterval(interval);
+        resetForNextParticipantRef.current();
+      } else {
+        setAutoReturnSeconds(Math.ceil(remaining / 1_000));
+      }
+    }, 250);
+
+    return () => window.clearInterval(interval);
+  }, [shouldAutoReturn]);
+
   const sortedRecords = useMemo(() => sortRecords(records), [records]);
   const currentRank = useMemo(() => {
     if (!currentRecord) return null;
@@ -773,6 +802,7 @@ export function GurumiGame() {
     setSecondsLeft(ROUND_DURATION / 1_000);
     setPhase("intro");
   };
+  resetForNextParticipantRef.current = resetForNextParticipant;
 
   const exportRecords = () => {
     const escapeCell = (value: string | number) => {
@@ -1019,8 +1049,10 @@ export function GurumiGame() {
                   </div>
                 </div>
               )}
-              <button onClick={resetForNextParticipant} type="button">
-                다음 참가자 <span aria-hidden="true">→</span>
+              <button aria-label="다음 참가자" onClick={resetForNextParticipant} type="button">
+                다음 참가자
+                {shouldAutoReturn && <span aria-live="off"> · {autoReturnSeconds}초</span>}{" "}
+                <span aria-hidden="true">→</span>
               </button>
             </div>
             <Leaderboard
