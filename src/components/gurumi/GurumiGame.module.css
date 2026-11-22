@@ -1687,7 +1687,7 @@
 .revealCard small { display: block; margin-top: 20px; padding: 6px 14px; border-radius: 8% 6% 9% 5%; background: #faf3d6; color: #827344; font-size: .78rem; }
 @media (max-width: 560px) { .revealOverlay { padding: 24px 18px; } .revealCard { padding: 25px 20px; } .revealCard .revealEyebrow { font-size: 1.3rem; } .revealCard .groupDescription { font-size: .9rem; } }
 
-.comparisonPanel { grid-column: 1 / -1; padding: 24px; background: #fff; border: 2px solid #b9cbb9; border-radius: 2% 3% 2% 3%; }
+.comparisonPanel { margin-top: 18px; padding: 24px; background: #fff; border: 2px solid #b9cbb9; border-radius: 2% 3% 2% 3%; }
 .comparisonHeader { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
 .comparisonHeader h2 { margin: 0; color: #365940; font-family: var(--font-drawing); font-size: 1.9rem; font-weight: 700; }
 .comparisonHeader p { margin: 4px 0 0; color: #6c7c70; font-size: .8rem; }

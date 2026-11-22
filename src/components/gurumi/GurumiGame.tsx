@@ -990,6 +990,8 @@ export function GurumiGame() {
           )}
         </div>
 
+        {phase === "result" && comparison && <DrawingComparison comparison={comparison} />}
+
         {phase === "result" && currentRecord && (
           <section className={styles.resultSection} ref={resultSectionRef}>
             <div className={styles.scoreCard}>
@@ -1028,7 +1030,6 @@ export function GurumiGame() {
               storageMode={storageMode}
               storageNotice={storageNotice}
             />
-            {comparison && <DrawingComparison comparison={comparison} />}
           </section>
         )}
       </div>
