@@ -5,6 +5,7 @@ import { getGurumiDatabaseConfig } from "./database-config";
 import {
   GURUMI_DEFAULT_GIFT_MIN_SCORE,
   GURUMI_LEADERBOARD_LIMIT,
+  GURUMI_TOP_DRAWING_LIMIT,
   isGurumiGiftMinimumScore,
   isScoreRecord,
   type AdminScoreRecord,
@@ -76,6 +77,14 @@ async function readGiftMinimumScore({ allowUnmigrated = false } = {}) {
   }
   if (!isGurumiGiftMinimumScore(data.minimum_score)) throw new Error("Invalid Gurumi gift minimum score.");
   return data.minimum_score;
+}
+
+export async function listGurumiTopDrawings(limit = GURUMI_TOP_DRAWING_LIMIT) {
+  const { data, error } = await rankedScoreRows("id,strokes")
+    .eq("score_version", GURUMI_SCORE_VERSION)
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map((row) => ({ id: String(row.id), strokes: String(row.strokes) }));
 }
 
 export async function loadGurumiLeaderboard() {
