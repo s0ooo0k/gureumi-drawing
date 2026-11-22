@@ -331,7 +331,7 @@ function buildReferenceEdges(imageData: ImageData) {
 
 // Thin dark drawing ink to its centerline, rather than scoring both sides of
 // a thick printed outline. Zhang-Suen thinning preserves connected features.
-function buildReferenceInkCenterlines(imageData: ImageData) {
+function buildReferenceInkCenterlines(imageData: ImageData, outlineSolidFills = false) {
   const { width, height, data } = imageData;
   const ink = new Uint8Array(width * height);
   for (let i = 0; i < ink.length; i++) {
@@ -340,6 +340,7 @@ function buildReferenceInkCenterlines(imageData: ImageData) {
     const luminance = .2126 * data[offset] + .7152 * data[offset + 1] + .0722 * data[offset + 2];
     ink[i] = alpha * luminance + (1 - alpha) * 255 < 85 ? 1 : 0;
   }
+  const solid = outlineSolidFills ? Uint8Array.from(ink) : null;
   let changed = true;
   while (changed) {
     changed = false;
@@ -363,7 +364,36 @@ function buildReferenceInkCenterlines(imageData: ImageData) {
       for (const i of remove) ink[i] = 0;
     }
   }
+  if (solid) outlineCollapsedFills(ink, solid, width);
   return ink;
+}
+
+// Thinning shrinks a solid filled shape (e.g. Kiro's black eyes) to a dot that no
+// drawn eye can overlap. Keep the outline of fills whose centerline covers <12% of them.
+function outlineCollapsedFills(centerline: Uint8Array, solid: Uint8Array, width: number) {
+  const seen = new Uint8Array(solid.length);
+  for (let start = 0; start < solid.length; start++) {
+    if (!solid[start] || seen[start]) continue;
+    const blob = [start];
+    let kept = 0;
+    seen[start] = 1;
+    for (let k = 0; k < blob.length; k++) {
+      const i = blob[k];
+      const x = i % width;
+      kept += centerline[i];
+      for (const j of [i - width, i + width, x > 0 ? i - 1 : -1, x < width - 1 ? i + 1 : -1]) {
+        if (j >= 0 && j < solid.length && solid[j] && !seen[j]) {
+          seen[j] = 1;
+          blob.push(j);
+        }
+      }
+    }
+    if (blob.length < 30 || kept / blob.length >= 0.12) continue;
+    for (const i of blob) {
+      const x = i % width;
+      if (x === 0 || x === width - 1 || !solid[i - width] || !solid[i + width] || !solid[i - 1] || !solid[i + 1]) centerline[i] = 1;
+    }
+  }
 }
 
 function getMaskBounds(mask: Uint8Array, width: number, height: number): Bounds | null {
@@ -876,12 +906,16 @@ function findBestAlignedMask(
   };
 }
 
-export function buildGurumiReferenceModel(imageData: ImageData, mode: "legacy" | "adaptive" = "legacy"): GurumiReferenceModel {
+export function buildGurumiReferenceModel(
+  imageData: ImageData,
+  mode: "legacy" | "adaptive" = "legacy",
+  { outlineSolidFills = false } = {},
+): GurumiReferenceModel {
   if (imageData.width !== GRID_SIZE || imageData.height !== GRID_SIZE) {
     throw new Error(`Reference image must be ${GRID_SIZE}x${GRID_SIZE}px.`);
   }
 
-  return buildGurumiReferenceModelFromMask(mode === "adaptive" ? buildReferenceInkCenterlines(imageData) : buildReferenceEdges(imageData), mode);
+  return buildGurumiReferenceModelFromMask(mode === "adaptive" ? buildReferenceInkCenterlines(imageData, outlineSolidFills) : buildReferenceEdges(imageData), mode);
 }
 
 export function buildGurumiReferenceModelFromMask(mask: Uint8Array, mode: "legacy" | "adaptive" = "adaptive"): GurumiReferenceModel {

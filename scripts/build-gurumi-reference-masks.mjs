@@ -7,13 +7,14 @@ function compile(file) {
   new Function('exports', 'module', code)(box.exports, box);
   return box.exports;
 }
-const { GURUMI_CHARACTERS, characterImage } = compile('src/lib/gurumi/characters.ts');
+const { GURUMI_CHARACTERS, GURUMI_OUTLINE_SOLID_FILL_IDS, characterImage } = compile('src/lib/gurumi/characters.ts');
 const { buildGurumiReferenceModel, GURUMI_SCORE_GRID_SIZE: size } = compile('src/lib/gurumi/similarity.ts');
 const result = {};
 for (const character of GURUMI_CHARACTERS) {
   const { data, info } = await sharp(`public${characterImage(character.id)}`).flatten({ background: '#fff' })
     .resize(size, size, { fit: 'fill', kernel: sharp.kernel.cubic }).ensureAlpha(1).raw().toBuffer({ resolveWithObject: true });
-  const { mask } = buildGurumiReferenceModel({ data: new Uint8ClampedArray(data), width: info.width, height: info.height }, 'adaptive');
+  const { mask } = buildGurumiReferenceModel({ data: new Uint8ClampedArray(data), width: info.width, height: info.height }, 'adaptive',
+    { outlineSolidFills: GURUMI_OUTLINE_SOLID_FILL_IDS.includes(character.id) });
   const bits = Buffer.alloc(Math.ceil(mask.length / 8));
   mask.forEach((value, index) => { if (value) bits[index >> 3] |= 1 << (index & 7); });
   result[character.id] = bits.toString('base64');
