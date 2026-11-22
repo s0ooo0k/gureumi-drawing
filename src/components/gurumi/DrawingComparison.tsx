@@ -37,8 +37,10 @@ export function DrawingComparison({ comparison }: { comparison: GurumiOverlapCom
       <div className={styles.comparisonExplanation}>
         <p><b>{Math.round(comparison.precision * 100)}%</b><span>내 선 중 원본과 겹친 비율</span></p>
         <p><b>{Math.round(comparison.recall * 100)}%</b><span>원본 선을 완성한 비율</span></p>
-        <div className={styles.comparisonFormula}><strong>점수 = 겹친 영역 ÷ 두 그림의 전체 선 영역</strong><span>초록 ÷ (초록 + 파랑 + 주황) × 100</span></div>
-        <small>색상이나 그린 순서는 채점하지 않아요. 선 굵기는 같게 맞추고, 반복 감점이나 소모임별 보너스 없이 겹침만 비교해요.</small>
+        <div className={styles.comparisonFormula}>
+          <strong>두 그림의 선이 {Math.round(comparison.similarity * 100)}% 겹쳤어요.</strong>
+          <span>겹친 비율을 점수로 환산해요. 원본에서 벗어난 선이 많거나 반복해서 그린 자국이 윤곽을 가리면 점수가 내려가요.</span>
+        </div>
       </div>
     </div>
   </section>;

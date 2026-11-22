@@ -8,11 +8,21 @@ import {
   loginGurumiAdmin,
   logoutGurumiAdmin,
   refreshGurumiAdminRecords,
+  setGurumiAdminGiftMinimumScore,
+  setGurumiAdminGiftReceived,
   updateGurumiAdminRecord,
   type GurumiAdminActionResult,
 } from "@/app/gurumi/admin/actions";
 import { characterLabel } from "@/lib/gurumi/characters";
-import type { ScoreRecord } from "@/lib/gurumi/records";
+import {
+  GURUMI_DEFAULT_GIFT_MIN_SCORE,
+  isGurumiGiftMinimumScore,
+  qualifiesForGurumiGift,
+  type AdminScoreRecord,
+  type GurumiAdminData,
+  type ScoreRecord,
+} from "@/lib/gurumi/records";
+import { GURUMI_SCORE_VERSION } from "@/lib/gurumi/similarity";
 
 import styles from "./GurumiAdmin.module.css";
 import { GurumiAwards } from "./GurumiAwards";
@@ -44,17 +54,19 @@ function formatRecordedAt(value: string) {
 export function GurumiAdmin({
   initialAuthenticated,
   initialError,
-  initialRecords,
+  initialData,
 }: {
   initialAuthenticated: boolean;
   initialError: string;
-  initialRecords: ScoreRecord[];
+  initialData: GurumiAdminData | null;
 }) {
   const [authenticated, setAuthenticated] = useState(initialAuthenticated);
-  const [records, setRecords] = useState(initialRecords);
-  const [drafts, setDrafts] = useState(() => draftsFromRecords(initialRecords));
+  const [data, setData] = useState(initialData);
+  const [drafts, setDrafts] = useState(() => draftsFromRecords(initialData?.records ?? []));
+  const [minimumScoreDraft, setMinimumScoreDraft] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [query, setQuery] = useState("");
+  const [giftFilter, setGiftFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [busyRecordId, setBusyRecordId] = useState<string | null>(null);
   const [notice, setNotice] = useState(initialError);
@@ -64,17 +76,47 @@ export function GurumiAdmin({
   const [isPending, startTransition] = useTransition();
   const [awardIndex, setAwardIndex] = useState<number | null>(null);
 
+  const records = data?.records ?? [];
+  const minimumScore = data?.giftMinimumScore ?? GURUMI_DEFAULT_GIFT_MIN_SCORE;
+  const draftMinimum = Number(minimumScoreDraft ?? minimumScore);
   const rankedRecords = useMemo(
-    () => records.map((record, index) => ({ rank: index + 1, record })),
-    [records],
+    () => data?.records.map((record, index) => ({ rank: index + 1, record })) ?? [],
+    [data],
   );
+  const currentScores = useMemo(
+    () => data?.records.filter((record) => record.scoreVersion === GURUMI_SCORE_VERSION) ?? [],
+    [data],
+  );
+  const giftCount = currentScores.filter((record) => qualifiesForGurumiGift(record, minimumScore)).length;
+  const eligibleRate = currentScores.length ? Math.round((100 * giftCount) / currentScores.length) : 0;
+  const draftGiftCount = currentScores.filter((record) => qualifiesForGurumiGift(record, draftMinimum)).length;
+  const brackets = Array.from({ length: 10 }, (_, index) => ({
+    min: Math.max(1, index * 10),
+    max: index === 9 ? 100 : index * 10 + 9,
+    eligible: 0,
+    below: 0,
+  }));
+  let zeroScores = 0;
+  for (const record of currentScores) {
+    if (record.score === 0) {
+      zeroScores += 1;
+    } else {
+      const bracket = brackets[Math.min(9, Math.floor(record.score / 10))];
+      if (qualifiesForGurumiGift(record, minimumScore)) bracket.eligible += 1;
+      else bracket.below += 1;
+    }
+  }
+  const largestBracket = Math.max(1, ...brackets.map(({ eligible, below }) => eligible + below));
   const filteredRecords = useMemo(() => {
     const normalizedQuery = query.normalize("NFKC").trim().toLocaleLowerCase("ko-KR");
-    if (!normalizedQuery) return rankedRecords;
-    return rankedRecords.filter(({ record }) =>
-      `${record.name} ${record.id}`.toLocaleLowerCase("ko-KR").includes(normalizedQuery),
-    );
-  }, [query, rankedRecords]);
+    return rankedRecords.filter(({ record }) => {
+      const eligible = qualifiesForGurumiGift(record, minimumScore);
+      if (giftFilter === "received" && !record.giftReceived) return false;
+      if (giftFilter === "eligible" && !eligible) return false;
+      if (giftFilter === "waiting" && (!eligible || record.giftReceived)) return false;
+      return `${record.name} ${record.id}`.toLocaleLowerCase("ko-KR").includes(normalizedQuery);
+    });
+  }, [giftFilter, minimumScore, query, rankedRecords]);
   const totalPages = Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const visibleRecords = filteredRecords.slice(
@@ -82,23 +124,30 @@ export function GurumiAdmin({
     currentPage * PAGE_SIZE,
   );
 
-  const replaceRecords = (nextRecords: ScoreRecord[]) => {
-    setRecords(nextRecords);
-    setDrafts(draftsFromRecords(nextRecords));
-  };
-
-  const handleResult = (result: GurumiAdminActionResult) => {
+  const handleResult = (result: GurumiAdminActionResult, { keepDrafts = false } = {}) => {
     if (!result.ok) {
       setNotice(result.error);
       setNoticeKind("error");
       if (result.unauthorized) {
         setAuthenticated(false);
-        setRecords([]);
+        setData(null);
         setDrafts({});
       }
       return false;
     }
-    replaceRecords(result.records);
+    setData(result.data);
+    setDrafts((current) => {
+      const next = draftsFromRecords(result.data.records);
+      if (keepDrafts) {
+        for (const record of data?.records ?? []) {
+          const draft = current[record.id];
+          if (next[record.id] && draft && (draft.name !== record.name || draft.score !== String(record.score))) {
+            next[record.id] = draft;
+          }
+        }
+      }
+      return next;
+    });
     setNotice(result.message ?? "최신 기록을 불러왔습니다.");
     setNoticeKind("success");
     return true;
@@ -120,8 +169,9 @@ export function GurumiAdmin({
     startTransition(async () => {
       await logoutGurumiAdmin();
       setAuthenticated(false);
-      setRecords([]);
+      setData(null);
       setDrafts({});
+      setMinimumScoreDraft(null);
       setNotice("");
     });
   };
@@ -130,6 +180,26 @@ export function GurumiAdmin({
     setNotice("");
     startTransition(async () => {
       handleResult(await refreshGurumiAdminRecords());
+    });
+  };
+
+  const saveMinimumScore = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!isGurumiGiftMinimumScore(draftMinimum)) return;
+    setNotice("");
+    startTransition(async () => {
+      if (handleResult(await setGurumiAdminGiftMinimumScore(draftMinimum), { keepDrafts: true })) {
+        setMinimumScoreDraft(null);
+      }
+    });
+  };
+
+  const toggleGiftReceived = (record: AdminScoreRecord) => {
+    setBusyRecordId(record.id);
+    setNotice("");
+    startTransition(async () => {
+      handleResult(await setGurumiAdminGiftReceived(record.id, !record.giftReceived), { keepDrafts: true });
+      setBusyRecordId(null);
     });
   };
 
@@ -156,8 +226,9 @@ export function GurumiAdmin({
     });
   };
 
-  const removeRecord = (record: ScoreRecord) => {
-    if (!window.confirm(`‘${record.name}’의 ${record.score}점 기록을 삭제할까요?\n삭제 후 복구할 수 없습니다.`)) {
+  const removeRecord = (record: AdminScoreRecord) => {
+    const receiptNote = record.giftReceived ? "\n이 기록의 선물 지급 1건도 집계에서 빠집니다." : "";
+    if (!window.confirm(`‘${record.name}’의 ${record.score}점 기록을 삭제할까요?\n삭제 후 복구할 수 없습니다.${receiptNote}`)) {
       return;
     }
     setBusyRecordId(record.id);
@@ -223,6 +294,53 @@ export function GurumiAdmin({
             </div>
           </section>
 
+          {data && (
+            <section className={styles.giftPanel} aria-labelledby="gift-panel-title">
+              <div className={styles.giftHeading}>
+                <div>
+                  <h2 id="gift-panel-title">선물 운영</h2>
+                  <p>현재 채점 기록 {currentScores.length}건 중 기준 충족 <strong>{giftCount}건 ({eligibleRate}%)</strong></p>
+                </div>
+                <p className={styles.giftTotal}>지급 완료 <strong>{data.giftReceivedCount.toLocaleString("ko-KR")}건</strong></p>
+              </div>
+              <form className={styles.giftSettings} onSubmit={saveMinimumScore}>
+                <label htmlFor="gift-minimum-score">선물 기준 점수</label>
+                <input
+                  id="gift-minimum-score"
+                  type="number"
+                  min={1}
+                  max={100}
+                  step={1}
+                  required
+                  disabled={isPending}
+                  value={minimumScoreDraft ?? minimumScore}
+                  onChange={(event) => setMinimumScoreDraft(event.target.value)}
+                />
+                <button disabled={isPending || draftMinimum === minimumScore || !isGurumiGiftMinimumScore(draftMinimum)} type="submit">
+                  기준 저장
+                </button>
+                {isGurumiGiftMinimumScore(draftMinimum) && draftMinimum !== minimumScore && (
+                  <span role="status">{draftMinimum}점 이상 {draftGiftCount}건</span>
+                )}
+              </form>
+              <figure className={styles.distribution}>
+                <figcaption>점수 분포 <span>기준 충족</span>{zeroScores > 0 && <small>0점 {zeroScores}건</small>}</figcaption>
+                <ol aria-label="1점부터 100점까지 구간별 기록 수">
+                  {brackets.map(({ min, max, eligible, below }) => (
+                    <li key={min} aria-label={`${min}~${max}점 ${eligible + below}건, 기준 충족 ${eligible}건`}>
+                      <strong aria-hidden="true">{eligible + below}</strong>
+                      <div className={styles.distributionTrack} aria-hidden="true">
+                        <span style={{ height: `${(100 * eligible) / largestBracket}%` }} data-eligible="true" />
+                        <span style={{ height: `${(100 * below) / largestBracket}%` }} />
+                      </div>
+                      <small aria-hidden="true">{min}–{max}</small>
+                    </li>
+                  ))}
+                </ol>
+              </figure>
+            </section>
+          )}
+
           <section className={styles.toolbar} aria-label="기록 검색 및 관리 도구">
             <label>
               <span>SEARCH</span>
@@ -237,6 +355,21 @@ export function GurumiAdmin({
               />
             </label>
             <div>
+              <label className={styles.giftFilter}>
+                <span>선물 상태</span>
+                <select
+                  value={giftFilter}
+                  onChange={(event) => {
+                    setGiftFilter(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="all">모든 기록</option>
+                  <option value="eligible">현재 기준 충족</option>
+                  <option value="waiting">기준 충족 · 지급 대기</option>
+                  <option value="received">지급 완료</option>
+                </select>
+              </label>
               <button disabled={isPending || records.length === 0} onClick={() => setAwardIndex(0)} type="button">시상 화면 (1위부터)</button>
               <button disabled={isPending} onClick={handleRefresh} type="button">새로고침</button>
               <button disabled={isPending} onClick={handleLogout} type="button">로그아웃</button>
@@ -257,6 +390,7 @@ export function GurumiAdmin({
                     <th>순위</th>
                     <th>닉네임</th>
                     <th>점수</th>
+                    <th>선물</th>
                     <th>기록 시각</th>
                     <th>기록 ID</th>
                     <th><span className={styles.visuallyHidden}>관리</span></th>
@@ -296,6 +430,19 @@ export function GurumiAdmin({
                             value={draft.score}
                           />
                         </td>
+                        <td>
+                          <button
+                            aria-label={`${record.name} 선물 지급`}
+                            aria-pressed={record.giftReceived}
+                            className={styles.giftCheck}
+                            disabled={isPending || busy}
+                            onClick={() => toggleGiftReceived(record)}
+                            type="button"
+                          >
+                            {record.giftReceived ? "지급 완료" : "지급 체크"}
+                          </button>
+                          {qualifiesForGurumiGift(record, minimumScore) && <small>기준 충족</small>}
+                        </td>
                         <td><small>{characterLabel(record.characterId)} · {record.scoreVersion}</small><br />{formatRecordedAt(record.createdAt)}</td>
                         <td><code title={record.id}>{record.id.slice(0, 8)}</code></td>
                         <td>
@@ -326,8 +473,7 @@ export function GurumiAdmin({
 
             {visibleRecords.length === 0 && (
               <div className={styles.emptyState}>
-                <strong>{records.length === 0 ? "아직 등록된 기록이 없습니다." : "검색 결과가 없습니다."}</strong>
-                <span>{records.length === 0 ? "참가자의 첫 기록을 기다리고 있어요." : "검색어를 바꿔보세요."}</span>
+                <strong>{records.length === 0 ? "아직 등록된 기록이 없습니다." : "조건에 맞는 기록이 없습니다."}</strong>
               </div>
             )}
 

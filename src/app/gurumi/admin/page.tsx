@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 
 import { GurumiAdmin } from "@/components/gurumi/GurumiAdmin";
 import { isGurumiAdminAuthenticated } from "@/lib/gurumi/admin-auth";
-import type { ScoreRecord } from "@/lib/gurumi/records";
-import { listGurumiScores } from "@/lib/gurumi/storage";
+import type { GurumiAdminData } from "@/lib/gurumi/records";
+import { loadGurumiAdminData } from "@/lib/gurumi/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -18,12 +18,12 @@ export const metadata: Metadata = {
 
 export default async function GurumiAdminPage() {
   const authenticated = await isGurumiAdminAuthenticated();
-  let records: ScoreRecord[] = [];
+  let data: GurumiAdminData | null = null;
   let initialError = "";
 
   if (authenticated) {
     try {
-      records = await listGurumiScores(undefined, { allVersions: true });
+      data = await loadGurumiAdminData();
     } catch {
       initialError = "기록을 불러오지 못했습니다. 잠시 후 새로고침해 주세요.";
     }
@@ -33,7 +33,7 @@ export default async function GurumiAdminPage() {
     <GurumiAdmin
       initialAuthenticated={authenticated}
       initialError={initialError}
-      initialRecords={records}
+      initialData={data}
     />
   );
 }

@@ -28,13 +28,45 @@ Object.assign(fixture, {
 });
 let responseData = [fixture];
 let fail = false;
+let giftMode = false;
+let settingsMissing = false;
+let pagedRecords = false;
+let giftMinimumScore = 60;
+let giftReceived = false;
 const requests = [];
 const storage = compile("src/lib/gurumi/storage.ts", {
   "server-only": {}, "./records": records, "./similarity": similarity,
   "./database-config": { getGurumiDatabaseConfig: () => ({ url: "https://test.supabase.co", key: "server-secret" }) },
   "@supabase/supabase-js": { createClient: (url, key, options) => createClient(url, key, {
     ...options, global: { fetch: async (url, init) => {
-      requests.push({ url: new URL(url), ...init });
+      const request = { url: new URL(url), ...init };
+      requests.push(request);
+      if (giftMode) {
+        const json = (body, status = 200) => new Response(JSON.stringify(body), {
+          status, headers: { "Content-Type": "application/json" },
+        });
+        if (request.url.pathname.endsWith("/gurumi_gift_settings")) {
+          if (settingsMissing) return json({ code: "PGRST205", message: "table missing" }, 404);
+          if (init.method === "PATCH") giftMinimumScore = JSON.parse(init.body).minimum_score;
+          return json({ minimum_score: giftMinimumScore });
+        }
+        if (init.method === "HEAD") {
+          return new Response(null, { headers: { "Content-Range": `*/${Number(giftReceived)}` } });
+        }
+        if (init.method === "PATCH") {
+          if (request.url.searchParams.get("id") === "eq.missing") return json(null);
+          giftReceived = JSON.parse(init.body).gift_received;
+          return json({ id: record.id });
+        }
+        const isAdminList = request.url.searchParams.get("select").includes("gift_received");
+        if (isAdminList && pagedRecords && request.url.searchParams.get("offset") === "0") {
+          return json(Array.from({ length: 1_000 }, (_, index) => ({
+            ...fixture, id: `older-${index}`, score_version: "reference-overlap-v7", gift_received: false,
+          })));
+        }
+        const rows = isAdminList ? [{ ...fixture, gift_received: giftReceived }] : [fixture];
+        return json(rows);
+      }
       return new Response(JSON.stringify(fail ? { message: "database unavailable", code: "XX000" } : responseData), {
         status: fail ? 500 : 200, headers: { "Content-Type": "application/json" },
       });
@@ -45,8 +77,7 @@ assert.deepEqual(await storage.listGurumiScores(10), [record]);
 assert.equal(requests.at(-1).url.searchParams.get("order"), "score.desc,calibrated.desc,raw.desc,created_at.asc");
 assert.equal(requests.at(-1).url.searchParams.get("limit"), "10");
 assert.equal(requests.at(-1).url.searchParams.get("score_version"), `eq.${similarity.GURUMI_SCORE_VERSION}`);
-await storage.listGurumiScores(10, { allVersions: true });
-assert.equal(requests.at(-1).url.searchParams.has("score_version"), false);
+assert.ok(!requests.at(-1).url.searchParams.get("select").includes("gift_received"));
 assert.ok(!requests.at(-1).url.searchParams.get("select").includes("strokes"));
 assert.equal(new Headers(requests.at(-1).headers).get("apikey"), "server-secret");
 responseData = fixture;
@@ -78,4 +109,30 @@ responseData = { ...fixture, score: "invalid" };
 await assert.rejects(storage.findGurumiScore(fixture.id), /invalid shape/);
 fail = true;
 await assert.rejects(storage.listGurumiScores(), (error) => error.message === "database unavailable");
+giftMode = true;
+assert.deepEqual(await storage.loadGurumiLeaderboard(), { leaderboard: [record], giftMinimumScore: 60 });
+assert.deepEqual(await storage.loadGurumiAdminData(), {
+  records: [{ ...record, giftReceived: false }], giftMinimumScore: 60, giftReceivedCount: 0,
+});
+const adminQuery = requests.findLast(({ url }) => url.searchParams.get("select")?.includes("gift_received"));
+assert.equal(adminQuery.url.searchParams.has("score_version"), false);
+assert.ok(!adminQuery.url.searchParams.get("select").includes("strokes"));
+pagedRecords = true;
+const allAdminScores = (await storage.loadGurumiAdminData()).records;
+assert.equal(allAdminScores.length, 1_001);
+assert.equal(allAdminScores[1_000].scoreVersion, similarity.GURUMI_SCORE_VERSION);
+pagedRecords = false;
+assert.equal(await storage.updateGurumiGiftReceived(record.id, true), true);
+assert.equal(await storage.updateGurumiGiftReceived(record.id, true), true);
+await storage.updateGurumiGiftMinimumScore(72);
+assert.deepEqual(await storage.loadGurumiAdminData(), {
+  records: [{ ...record, giftReceived: true }], giftMinimumScore: 72, giftReceivedCount: 1,
+});
+assert.deepEqual(await storage.loadGurumiLeaderboard(), { leaderboard: [record], giftMinimumScore: 72 });
+assert.equal(await storage.updateGurumiGiftReceived(record.id, false), true);
+assert.equal((await storage.loadGurumiAdminData()).giftReceivedCount, 0);
+assert.equal(await storage.updateGurumiGiftReceived("missing", true), false);
+settingsMissing = true;
+assert.equal((await storage.loadGurumiLeaderboard()).giftMinimumScore, 60);
+await assert.rejects(storage.loadGurumiAdminData(), (error) => error.code === "PGRST205");
 console.log("Supabase storage regression checks passed (real SDK, mocked HTTP; no live database).");
