@@ -70,6 +70,7 @@ export function GurumiAdmin({
   const [query, setQuery] = useState("");
   const [giftFilter, setGiftFilter] = useState("all");
   const [visibilityFilter, setVisibilityFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("newest");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [page, setPage] = useState(1);
   const [busyRecordId, setBusyRecordId] = useState<string | null>(null);
@@ -125,9 +126,16 @@ export function GurumiAdmin({
       return `${record.name} ${record.id}`.toLocaleLowerCase("ko-KR").includes(normalizedQuery);
     });
   }, [giftFilter, minimumScore, query, rankedRecords, visibilityFilter]);
+  const sortedRecords = useMemo(
+    // stable sort: 동시각 기록은 기존 순위 순서 유지
+    () => sortOrder === "newest"
+      ? [...filteredRecords].sort((a, b) => Date.parse(b.record.createdAt) - Date.parse(a.record.createdAt))
+      : filteredRecords,
+    [filteredRecords, sortOrder],
+  );
   const totalPages = Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
-  const visibleRecords = filteredRecords.slice(
+  const visibleRecords = sortedRecords.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE,
   );
@@ -423,6 +431,19 @@ export function GurumiAdmin({
                   <option value="all">전체</option>
                   <option value="visible">노출</option>
                   <option value="hidden">미노출</option>
+                </select>
+              </label>
+              <label className={styles.giftFilter}>
+                <span>정렬</span>
+                <select
+                  value={sortOrder}
+                  onChange={(event) => {
+                    setSortOrder(event.target.value);
+                    navigatePage(1);
+                  }}
+                >
+                  <option value="newest">최신순</option>
+                  <option value="rank">순위순</option>
                 </select>
               </label>
               <button disabled={isPending || publicRecords.length === 0} onClick={() => setAwardSelection({ index: 0, ceremony: true })} type="button">시상 화면 (1위부터)</button>
