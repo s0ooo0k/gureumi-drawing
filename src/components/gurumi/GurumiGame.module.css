@@ -1725,3 +1725,8 @@
 @media (min-width: 761px) {
   .gridBackdrop[data-animated="false"] .doodleStar { display: none; }
 }
+
+/* Full ranking dialog 601-900px: the base reset above drops the button onto row 2 of the 1fr column; mirror the <=600px placement. */
+@media (min-width: 601px) and (max-width: 900px) {
+  .fullRankingHeader > button { grid-column: 2; grid-row: 1 / span 2; }
+}
