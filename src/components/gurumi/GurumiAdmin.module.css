@@ -315,6 +315,8 @@
 
 .toolbar button,
 .giftSettings button,
+.bulkActions button,
+.visibilityButton,
 .giftCheck,
 .rowActions button,
 .pagination button {
@@ -332,6 +334,8 @@
 .giftCheck[aria-pressed="true"],
 .giftCheck:hover:not(:disabled),
 .giftSettings button:hover:not(:disabled),
+.bulkActions button:hover:not(:disabled),
+.visibilityButton:hover:not(:disabled),
 .toolbar button:hover:not(:disabled),
 .pagination button:hover:not(:disabled) {
   background: var(--admin-lime);
@@ -339,6 +343,8 @@
 
 .toolbar button:disabled,
 .giftSettings button:disabled,
+.bulkActions button:disabled,
+.visibilityButton:disabled,
 .giftCheck:disabled,
 .rowActions button:disabled,
 .pagination button:disabled {
@@ -377,7 +383,7 @@
 
 .recordsPanel table {
   width: 100%;
-  min-width: 900px;
+  min-width: 1050px;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -399,13 +405,39 @@
   padding: 8px 12px;
 }
 
-.recordsPanel th:nth-child(1) { width: 72px; }
-.recordsPanel th:nth-child(2) { width: auto; }
-.recordsPanel th:nth-child(3) { width: 100px; }
-.recordsPanel th:nth-child(4) { width: 110px; }
-.recordsPanel th:nth-child(5) { width: 160px; }
-.recordsPanel th:nth-child(6) { width: 100px; }
-.recordsPanel th:nth-child(7) { width: 215px; }
+.recordsPanel th:nth-child(1) { width: 46px; }
+.recordsPanel th:nth-child(2) { width: 60px; }
+.recordsPanel th:nth-child(3) { width: auto; }
+.recordsPanel th:nth-child(4) { width: 90px; }
+.recordsPanel th:nth-child(5) { width: 105px; }
+.recordsPanel th:nth-child(6) { width: 120px; }
+.recordsPanel th:nth-child(7) { width: 158px; }
+.recordsPanel th:nth-child(8) { width: 100px; }
+.recordsPanel th:nth-child(9) { width: 215px; }
+
+.bulkActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--admin-line);
+  background: #f7f8f5;
+  font-size: 0.75rem;
+}
+
+.bulkActions > div { display: flex; gap: 7px; }
+
+.visibilityState {
+  display: block;
+  color: #45525d;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.visibilityState[data-visible="true"] { color: #446407; }
+.visibilityButton { min-height: 32px; white-space: nowrap; }
 
 .recordsPanel tbody tr {
   border-bottom: 1px solid rgba(17, 20, 24, 0.075);
@@ -425,7 +457,7 @@
   font-size: 0.7rem;
 }
 
-.recordsPanel td:first-child b {
+.recordsPanel td:nth-child(2) b {
   color: #527900;
   font-family: var(--font-unbounded), var(--font-latin);
   font-size: 0.56rem;
@@ -436,6 +468,13 @@
   height: 37px;
   padding: 0 10px;
   font-size: 0.72rem;
+}
+
+.recordsPanel input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #527900;
+  vertical-align: middle;
 }
 
 .recordsPanel input[type="number"] {

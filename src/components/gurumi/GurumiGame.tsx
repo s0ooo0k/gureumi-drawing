@@ -59,7 +59,7 @@ function readCachedRecords() {
     if (!stored) return [];
     const parsed: unknown = JSON.parse(stored);
     return Array.isArray(parsed)
-      ? sortRecords(parsed.filter(isScoreRecord).filter(record => record.scoreVersion === GURUMI_SCORE_VERSION)).slice(0, GURUMI_LEADERBOARD_LIMIT)
+      ? sortRecords(parsed.filter(isScoreRecord).filter(record => record.isVisible !== false && record.scoreVersion === GURUMI_SCORE_VERSION)).slice(0, GURUMI_LEADERBOARD_LIMIT)
       : [];
   } catch {
     return [];
@@ -70,7 +70,7 @@ function mergeRecords(serverRecords: ScoreRecord[], pendingScores: PendingScore[
   const recordsById = new Map<string, ScoreRecord>();
   for (const pending of pendingScores) recordsById.set(pending.record.id, pending.record);
   for (const record of serverRecords) recordsById.set(record.id, record);
-  return sortRecords([...recordsById.values()].filter(record => record.scoreVersion === GURUMI_SCORE_VERSION)).slice(0, GURUMI_LEADERBOARD_LIMIT);
+  return sortRecords([...recordsById.values()].filter(record => record.isVisible !== false && record.scoreVersion === GURUMI_SCORE_VERSION)).slice(0, GURUMI_LEADERBOARD_LIMIT);
 }
 
 async function fetchJsonWithTimeout(input: RequestInfo | URL, init?: RequestInit) {
