@@ -35,7 +35,7 @@
 .reference img { width: clamp(72px, 10vw, 130px); height: auto; border-radius: 14px; }
 .reference > span { color: #697078; font-size: 14px; line-height: 1.7; }
 .artwork { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 0; margin: 0; }
-.drawing, .drawingMessage { width: min(100%, calc(100dvh - 230px)); aspect-ratio: 1; height: auto; background: white; border: 1px solid #d5d9cd; border-radius: 18px; box-shadow: 0 16px 48px #182a0710; }
+.drawing, .drawingMessage { width: min(100%, calc(100dvh - 270px)); aspect-ratio: 1; height: auto; background: white; border: 1px solid #d5d9cd; border-radius: 18px; box-shadow: 0 16px 48px #182a0710; }
 .drawingMessage { display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 28px; text-align: center; gap: 16px; }
 .artwork figcaption { margin-top: 12px; color: #697078; font-size: 15px; }
 .blankNote { position: absolute; top: 45%; color: #697078; }
@@ -44,6 +44,16 @@
 .controls > button:last-child { background: #cce2ff; border-color: #a5d918; }
 .controls label { display: flex; align-items: center; gap: 12px; font-size: 13px; color: #697078; }
 .hint { margin: 8px 0 0; text-align: center; color: #697078; font-size: 11px; }
+
+/* Short desktop screens: scale the winner column by height so it fits beside the drawing. */
+@media (max-height: 740px) and (min-width: 701px) {
+  .winner > p { font-size: 20px; }
+  .rank strong { font-size: clamp(56px, 14vh, 210px); }
+  .winner h2 { margin: 8px 0; font-size: clamp(26px, min(5vw, 6vh), 78px); }
+  .score { font-size: clamp(28px, min(4vw, 7vh), 62px); }
+  .reference { margin-top: 12px; }
+  .reference img { width: clamp(56px, 11vh, 130px); }
+}
 
 @media (max-width: 700px) {
   .dialog { padding: 14px; }
