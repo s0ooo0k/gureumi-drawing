@@ -1525,7 +1525,21 @@
 .scoreValue strong { font-family: "Cabin Sketch", var(--font-latin); color: #1769db; }
 .scoreCard h2 { grid-column: 2; grid-row: 2; align-self: center; font-size: clamp(1.5rem, 2.3vw, 2rem); line-height: 1.35; overflow-wrap: break-word; }
 .scoreCard .rankCopy { grid-column: 2; grid-row: 3; margin: 0; line-height: 1.65; }
-.scoreCard > button { grid-column: 1 / -1; grid-row: 4; width: 100%; margin-top: 8px; }
+.giftPickup {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 2px solid #4c825b;
+  border-radius: 12px;
+  background: #e6f7ea;
+  color: #24482e;
+  padding: 12px 15px;
+}
+.giftPickup > span { font-size: 1.7rem; }
+.giftPickup strong { display: block; font-size: 1.15rem; line-height: 1.3; }
+.giftPickup p { margin: 4px 0 0; font-size: 0.88rem; line-height: 1.45; }
+.scoreCard > button { grid-column: 1 / -1; width: 100%; margin-top: 8px; }
 .revealOverlay { background-color: #fff; }
 .revealOverlay img { background-color: #e6f2ff; border-color: #1769db; }
 @media (max-width: 1050px) {

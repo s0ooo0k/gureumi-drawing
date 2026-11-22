@@ -975,13 +975,16 @@ export function GurumiGame() {
                       ? `현재 ${currentRank}위예요. 순위는 행사 종료 전까지 바뀔 수 있어요.`
                       : "기록을 저장했어요."
                   : resultStorage === "pending" ? "서버 저장을 기다리고 있어요." : "기록을 저장하지 못했어요."}
-                {resultStorage !== "failed" && giftMinimumScore !== null && qualifiesForGurumiGift(currentRecord, giftMinimumScore) && (
-                  <div>
-                    <strong>{giftMinimumScore}점 선물 기준 달성!</strong>{" "}
-                    {resultStorage === "saved" ? "운영진에게 이 화면을 보여 주세요." : "기록이 저장되면 운영진에게 확인해 주세요."}
-                  </div>
-                )}
               </div>
+              {resultStorage === "saved" && giftMinimumScore !== null && qualifiesForGurumiGift(currentRecord, giftMinimumScore) && (
+                <div className={styles.giftPickup} role="status">
+                  <span aria-hidden="true">🎁</span>
+                  <div>
+                    <strong>선물을 받아가세요!</strong>
+                    <p>운영진에게 이 결과 화면을 보여 주세요.</p>
+                  </div>
+                </div>
+              )}
               <button onClick={resetForNextParticipant} type="button">
                 다음 참가자 <span aria-hidden="true">→</span>
               </button>
