@@ -1736,3 +1736,11 @@
 @media (min-width: 601px) and (max-width: 900px) {
   .fullRankingHeader > button { grid-column: 2; grid-row: 1 / span 2; }
 }
+
+/* Canvas panel header at <=420px: its padding left too little room, so labels wrapped mid-word. Keep each label on one line and let the buttons drop below YOUR DRAWING when the row is full. */
+@media (max-width: 420px) {
+  .panelHeading { flex-wrap: wrap; gap: 6px 8px; padding-block: 8px; }
+  .panelHeading > span, .canvasActions button { white-space: nowrap; }
+  .canvasActions { gap: 4px; }
+  .canvasActions button { padding-inline: 7px; font-size: 0.9rem; }
+}
