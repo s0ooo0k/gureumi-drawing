@@ -10,10 +10,12 @@ import {
   scoreDrawing,
   type GurumiOverlapComparison,
   type GurumiReferenceModel,
+  type Stroke,
 } from "@/lib/gurumi/similarity";
 import {
   createScoreRecord,
   GURUMI_LEADERBOARD_LIMIT,
+  GURUMI_TOP_DRAWING_LIMIT,
   isGurumiRoundSession,
   isLeaderboardResponse,
   isScoreRecord,
@@ -34,6 +36,7 @@ import {
 } from "@/lib/gurumi/offline-store";
 import { decodeStrokes, encodeStrokes } from "@/lib/gurumi/stroke-codec";
 
+import { StrokeDrawing } from "./StrokeDrawing";
 import { DrawingCanvas, type DrawingCanvasHandle } from "./DrawingCanvas";
 import { DrawingComparison } from "./DrawingComparison";
 import { getGurumiCharacterReference } from "@/lib/gurumi/character-reference";
@@ -356,7 +359,27 @@ function Leaderboard({
   storageNotice?: string;
 }) {
   const [fullRankingOpen, setFullRankingOpen] = useState(false);
-  const topFive = records.slice(0, 5);
+  const topFive = records.slice(0, GURUMI_TOP_DRAWING_LIMIT);
+  const topIds = topFive.map((record) => record.id).join(",");
+  const [topStrokes, setTopStrokes] = useState<Record<string, Stroke[]>>({});
+
+  useEffect(() => {
+    if (!topIds) return;
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const response = await fetch("/api/gurumi/top-drawings", { cache: "no-store", signal: controller.signal });
+        if (!response.ok) return;
+        const body = (await response.json()) as { drawings?: { id: string; strokes: string }[] };
+        const next: Record<string, Stroke[]> = {};
+        for (const { id, strokes } of body.drawings ?? []) next[id] = decodeStrokes(strokes).strokes;
+        setTopStrokes(next);
+      } catch {
+        // Drawings are optional decoration; the ranking itself still renders.
+      }
+    })();
+    return () => controller.abort();
+  }, [topIds]);
 
   return (
     <>
@@ -381,6 +404,15 @@ function Leaderboard({
                 <span className={styles.rankNumber}>{String(index + 1).padStart(2, "0")}</span>
                 <strong>{record.name}</strong>
                 <b>{record.score}</b>
+                <div className={styles.rankArt}>
+                  {topStrokes[record.id] ? (
+                    <StrokeDrawing strokes={topStrokes[record.id]} label={`${record.name} 참가자가 그린 구르미`} />
+                  ) : (
+                    <span aria-hidden="true" />
+                  )}
+                  <Image src={characterImage(record.characterId)} alt="" width={96} height={96} />
+                  <small>{characterLabel(record.characterId)}</small>
+                </div>
               </li>
             ))}
           </ol>

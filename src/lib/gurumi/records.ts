@@ -5,6 +5,7 @@ import {
 } from "./similarity";
 
 export const GURUMI_LEADERBOARD_LIMIT = 1_000;
+export const GURUMI_TOP_DRAWING_LIMIT = 5;
 export const GURUMI_DEFAULT_GIFT_MIN_SCORE = 60;
 
 export type ScoreRecord = {

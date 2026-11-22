@@ -8,6 +8,7 @@ import type { ScoreRecord } from "@/lib/gurumi/records";
 import type { Stroke } from "@/lib/gurumi/similarity";
 import { decodeStrokes } from "@/lib/gurumi/stroke-codec";
 
+import { StrokeDrawing } from "./StrokeDrawing";
 import styles from "./GurumiAwards.module.css";
 
 function SavedDrawing({ id, name }: { id: string; name: string }) {
@@ -51,14 +52,7 @@ function SavedDrawing({ id, name }: { id: string; name: string }) {
   if (strokes === null) return <div className={styles.drawingMessage} role="status">그림을 불러오는 중…</div>;
   return (
     <>
-      <svg className={styles.drawing} viewBox="0 0 1000 1000" role="img" aria-label={`${name} 참가자가 그린 구르미`}>
-        <rect width="1000" height="1000" fill="white" />
-        {strokes.map(({ points }, index) => points.length === 1 ? (
-          <circle key={index} cx={points[0].x * 1000} cy={points[0].y * 1000} r="6" fill="#111111" />
-        ) : (
-          <polyline key={index} points={points.map(({ x, y }) => `${x * 1000},${y * 1000}`).join(" ")} fill="none" stroke="#111111" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round" />
-        ))}
-      </svg>
+      <StrokeDrawing className={styles.drawing} strokes={strokes} label={`${name} 참가자가 그린 구르미`} />
       {strokes.length === 0 && <span className={styles.blankNote}>그려진 선이 없는 기록입니다.</span>}
     </>
   );

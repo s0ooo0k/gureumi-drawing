@@ -1706,3 +1706,11 @@
 .comparisonFormula span { font-size: .78rem; }
 .comparisonExplanation small { color: #7c867d; font-size: .75rem; line-height: 1.8; }
 @media (max-width: 700px) { .comparisonPanel { padding: 18px; } .comparisonBody { grid-template-columns: 1fr; gap: 22px; } .comparisonHeader h2 { font-size: 1.65rem; } }
+
+/* TOP 5 thumbnails: reuse the dashed #a2b7cd rank-divider line and the wax-fill placeholder */
+.rankArt { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 4px; }
+.rankArt svg, .rankArt > span, .rankArt img { width: 100%; aspect-ratio: 1; height: auto; background: #fff; border: 1px dashed #a2b7cd; border-radius: 10% 6% 8% 5%; object-fit: contain; }
+.rankArt > span { background: #faedb6 url('/assets/sketchbook/wax-fill.svg'); }
+.rankArt small { grid-column: 1 / -1; overflow: hidden; font-family: var(--font-drawing); font-size: 0.9rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 760px) { .rankArt { max-width: 180px; } }
+.resultSection .rankArt { max-width: 180px; }

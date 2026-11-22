@@ -16,6 +16,7 @@ npm run dev
 - `/`: 게임 (기존 `/gurumi` 주소도 유지)
 - `/gurumi/admin`: 관리자 로그인, 기록 수정·삭제, 그림 조회, 시상 화면
 - `/api/gurumi/round`, `/api/gurumi/scores`: 라운드 발급 및 점수 API
+- `/api/gurumi/top-drawings`: 공개 TOP 5 그림 조회 API (id 파라미터 없음)
 
 ## Supabase 설정
 
@@ -24,7 +25,7 @@ npm run dev
 3. 프로젝트 URL과 Secret key를 `.env.local`의 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`에 설정합니다. 구형 `service_role` 키는 `SUPABASE_SERVICE_ROLE_KEY`로도 지원합니다.
 4. `openssl rand -hex 32`로 `GURUMI_ROUND_SECRET`, `GURUMI_ADMIN_SESSION_SECRET`을 각각 생성하고 관리자 비밀번호를 설정합니다.
 
-키와 비밀번호는 서버에서만 사용합니다. 테이블은 RLS를 활성화하고 브라우저 역할의 접근을 차단합니다. 랭킹 조회와 제출은 Next.js 서버를 거치고, 그림 원본 조회·수정·삭제는 관리자 인증이 필요합니다.
+키와 비밀번호는 서버에서만 사용합니다. 테이블은 RLS를 활성화하고 브라우저 역할의 접근을 차단합니다. 랭킹 조회와 제출은 Next.js 서버를 거치고, 공개 TOP 5 그림은 누구나 볼 수 있으며 그 외 그림 원본 조회·수정·삭제는 관리자 인증이 필요합니다.
 
 ## Vercel 배포
 
