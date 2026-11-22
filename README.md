@@ -14,7 +14,7 @@ npm run dev
 ```
 
 - `/`: 게임 (기존 `/gurumi` 주소도 유지)
-- `/gurumi/admin`: 관리자 로그인, 기록 수정·삭제, 그림 조회, 시상 화면
+- `/gurumi/admin`: 관리자 로그인, 닉네임 수정·기록 삭제, 그림 조회, 시상 화면 (점수는 서버 채점값이라 수정 불가)
 - `/api/gurumi/round`, `/api/gurumi/scores`: 라운드 발급 및 점수 API
 - `/api/gurumi/top-drawings`: 공개 TOP 5 그림 조회 API (id 파라미터 없음)
 

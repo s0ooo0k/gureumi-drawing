@@ -394,6 +394,7 @@ console.log("Score API checks passed: server scoring and stored character match 
 let giftAdminAuthenticated = false;
 const giftWrites = [];
 const visibilityWrites = [];
+const nameWrites = [];
 const adminActions = compileTypeScript("src/app/gurumi/admin/actions.ts", (id) => {
   if (id === "@/lib/gurumi/admin-auth") return { isGurumiAdminAuthenticated: async () => giftAdminAuthenticated };
   if (id === "@/lib/gurumi/records") return records;
@@ -403,6 +404,10 @@ const adminActions = compileTypeScript("src/app/gurumi/admin/actions.ts", (id) =
     updateGurumiGiftReceived: async (recordId, received) => {
       giftWrites.push([recordId, received]);
       return true;
+    },
+    updateGurumiName: async (update) => {
+      nameWrites.push(update);
+      return update.id === "missing-record" ? null : {};
     },
     updateGurumiScoreVisibility: async (ids, isVisible) => {
       visibilityWrites.push([ids, isVisible]);
@@ -414,6 +419,7 @@ const adminActions = compileTypeScript("src/app/gurumi/admin/actions.ts", (id) =
 assert.equal((await adminActions.setGurumiAdminGiftMinimumScore(54)).unauthorized, true);
 assert.equal((await adminActions.setGurumiAdminGiftReceived(signedRound.id, true)).unauthorized, true);
 assert.equal((await adminActions.setGurumiAdminRecordVisibility([signedRound.id], false)).unauthorized, true);
+assert.equal((await adminActions.updateGurumiAdminRecordName({ id: signedRound.id, name: "새닉네임" })).unauthorized, true);
 giftAdminAuthenticated = true;
 assert.equal((await adminActions.setGurumiAdminGiftMinimumScore(101)).ok, false);
 assert.equal((await adminActions.setGurumiAdminGiftReceived(signedRound.id, "true")).ok, false);
@@ -428,7 +434,14 @@ assert.equal((await adminActions.setGurumiAdminRecordVisibility(Array(51).fill(s
 assert.deepEqual(visibilityWrites, []);
 assert.equal((await adminActions.setGurumiAdminRecordVisibility([signedRound.id, signedRound.id, "another-record"], false)).ok, true);
 assert.deepEqual(visibilityWrites, [[[signedRound.id, "another-record"], false]]);
-console.log("Admin checks passed: authentication, gift settings, and validated visibility updates.");
+assert.equal(nameWrites.length, 0);
+assert.equal((await adminActions.updateGurumiAdminRecordName({ id: "invalid!", name: "새닉네임" })).ok, false);
+assert.equal((await adminActions.updateGurumiAdminRecordName({ id: signedRound.id, name: "가" })).ok, false);
+assert.equal((await adminActions.updateGurumiAdminRecordName({ id: "missing-record", name: "새닉네임" })).ok, false);
+nameWrites.length = 0;
+assert.equal((await adminActions.updateGurumiAdminRecordName({ id: signedRound.id, name: "새닉네임", score: 100 })).ok, true);
+assert.deepEqual(nameWrites, [{ id: signedRound.id, name: "새닉네임" }], "A score sent to the name action must be ignored, not forwarded to storage.");
+console.log("Admin checks passed: authentication, gift settings, name-only edits, and validated visibility updates.");
 
 const maskData = compileTypeScript("src/lib/gurumi/reference-mask-data.ts");
 const characterReference = compileTypeScript("src/lib/gurumi/character-reference.ts", id => {
