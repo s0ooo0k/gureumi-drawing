@@ -117,6 +117,9 @@ for (const [score, eligible] of [[59, false], [60, true], [61, true]]) {
 }
 assert.equal(records.qualifiesForGurumiGift({ score: 100, scoreVersion: "reference-overlap-v8" }), false);
 assert.equal(records.qualifiesForGurumiGift({ score: 54, scoreVersion: similarity.GURUMI_SCORE_VERSION }, 54), true);
+assert.equal(records.qualifiesForGurumiGift({
+  score: 100, scoreVersion: similarity.GURUMI_SCORE_VERSION, isVisible: false,
+}), false);
 for (const invalid of [0, 101, 60.5, "60", null]) assert.equal(records.isGurumiGiftMinimumScore(invalid), false);
 
 let drawingAuthenticated = false;
@@ -390,6 +393,7 @@ console.log("Score API checks passed: server scoring and stored character match 
 
 let giftAdminAuthenticated = false;
 const giftWrites = [];
+const visibilityWrites = [];
 const adminActions = compileTypeScript("src/app/gurumi/admin/actions.ts", (id) => {
   if (id === "@/lib/gurumi/admin-auth") return { isGurumiAdminAuthenticated: async () => giftAdminAuthenticated };
   if (id === "@/lib/gurumi/records") return records;
@@ -400,11 +404,16 @@ const adminActions = compileTypeScript("src/app/gurumi/admin/actions.ts", (id) =
       giftWrites.push([recordId, received]);
       return true;
     },
+    updateGurumiScoreVisibility: async (ids, isVisible) => {
+      visibilityWrites.push([ids, isVisible]);
+      return ids.length;
+    },
   };
   throw new Error(`Unexpected import: ${id}`);
 });
 assert.equal((await adminActions.setGurumiAdminGiftMinimumScore(54)).unauthorized, true);
 assert.equal((await adminActions.setGurumiAdminGiftReceived(signedRound.id, true)).unauthorized, true);
+assert.equal((await adminActions.setGurumiAdminRecordVisibility([signedRound.id], false)).unauthorized, true);
 giftAdminAuthenticated = true;
 assert.equal((await adminActions.setGurumiAdminGiftMinimumScore(101)).ok, false);
 assert.equal((await adminActions.setGurumiAdminGiftReceived(signedRound.id, "true")).ok, false);
@@ -412,7 +421,14 @@ assert.equal(giftWrites.length, 0);
 assert.equal((await adminActions.setGurumiAdminGiftMinimumScore(54)).data.giftMinimumScore, 54);
 assert.equal((await adminActions.setGurumiAdminGiftReceived(signedRound.id, true)).data.giftReceivedCount, 1);
 assert.deepEqual(giftWrites, [54, [signedRound.id, true]]);
-console.log("Gift administration checks passed: authentication, input validation, and saved values.");
+assert.equal((await adminActions.setGurumiAdminRecordVisibility([], false)).ok, false);
+assert.equal((await adminActions.setGurumiAdminRecordVisibility(["invalid!"], false)).ok, false);
+assert.equal((await adminActions.setGurumiAdminRecordVisibility([signedRound.id], "false")).ok, false);
+assert.equal((await adminActions.setGurumiAdminRecordVisibility(Array(51).fill(signedRound.id), false)).ok, false);
+assert.deepEqual(visibilityWrites, []);
+assert.equal((await adminActions.setGurumiAdminRecordVisibility([signedRound.id, signedRound.id, "another-record"], false)).ok, true);
+assert.deepEqual(visibilityWrites, [[[signedRound.id, "another-record"], false]]);
+console.log("Admin checks passed: authentication, gift settings, and validated visibility updates.");
 
 const maskData = compileTypeScript("src/lib/gurumi/reference-mask-data.ts");
 const characterReference = compileTypeScript("src/lib/gurumi/character-reference.ts", id => {

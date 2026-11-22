@@ -6,6 +6,7 @@ import {
 
 export const GURUMI_LEADERBOARD_LIMIT = 1_000;
 export const GURUMI_DEFAULT_GIFT_MIN_SCORE = 60;
+export const GURUMI_VISIBILITY_BATCH_LIMIT = 50;
 
 export type ScoreRecord = {
   id: string;
@@ -23,9 +24,10 @@ export type ScoreRecord = {
   characterId?: string;
   createdAt: string;
   scoreVersion: string;
+  isVisible?: boolean;
 };
 
-export type AdminScoreRecord = ScoreRecord & { giftReceived: boolean };
+export type AdminScoreRecord = ScoreRecord & { giftReceived: boolean; isVisible: boolean };
 
 export type GurumiAdminData = {
   records: AdminScoreRecord[];
@@ -38,10 +40,10 @@ export function isGurumiGiftMinimumScore(value: unknown): value is number {
 }
 
 export function qualifiesForGurumiGift(
-  record: Pick<ScoreRecord, "score" | "scoreVersion">,
+  record: Pick<ScoreRecord, "score" | "scoreVersion" | "isVisible">,
   minimumScore = GURUMI_DEFAULT_GIFT_MIN_SCORE,
 ) {
-  return record.scoreVersion === GURUMI_SCORE_VERSION && record.score >= minimumScore;
+  return record.isVisible !== false && record.scoreVersion === GURUMI_SCORE_VERSION && record.score >= minimumScore;
 }
 
 export type ScoreSubmission = {
@@ -176,7 +178,8 @@ export function isScoreRecord(value: unknown): value is ScoreRecord {
     Object.values(record.partScores ?? {}).every((part) => typeof part === "number" && Number.isFinite(part)) &&
     (record.characterId === undefined || typeof record.characterId === "string") &&
     typeof record.createdAt === "string" &&
-    typeof record.scoreVersion === "string"
+    typeof record.scoreVersion === "string" &&
+    (record.isVisible === undefined || typeof record.isVisible === "boolean")
   );
 }
 

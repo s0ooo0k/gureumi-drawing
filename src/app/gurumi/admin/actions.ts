@@ -9,6 +9,7 @@ import {
   verifyGurumiAdminPassword,
 } from "@/lib/gurumi/admin-auth";
 import {
+  GURUMI_VISIBILITY_BATCH_LIMIT,
   isGurumiGiftMinimumScore,
   isGurumiRecordId,
   normalizeGurumiName,
@@ -20,6 +21,7 @@ import {
   updateGurumiGiftMinimumScore,
   updateGurumiGiftReceived,
   updateGurumiScore,
+  updateGurumiScoreVisibility,
 } from "@/lib/gurumi/storage";
 
 export type GurumiAdminActionResult =
@@ -148,5 +150,25 @@ export async function setGurumiAdminGiftReceived(id: string, received: boolean):
     };
   } catch {
     return { ok: false, error: "선물 지급 상태를 저장하지 못했습니다." };
+  }
+}
+
+export async function setGurumiAdminRecordVisibility(ids: string[], isVisible: boolean): Promise<GurumiAdminActionResult> {
+  if (!(await isGurumiAdminAuthenticated())) return unauthorizedResult();
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > GURUMI_VISIBILITY_BATCH_LIMIT ||
+      !ids.every(isGurumiRecordId) || typeof isVisible !== "boolean") {
+    return { ok: false, error: "노출 상태를 변경할 기록을 다시 선택해 주세요." };
+  }
+
+  try {
+    const updated = await updateGurumiScoreVisibility([...new Set(ids)], isVisible);
+    if (updated === 0) return { ok: false, error: "노출 상태를 변경할 기록을 찾지 못했습니다." };
+    return {
+      ok: true,
+      data: await loadGurumiAdminData(),
+      message: `${updated}건을 ${isVisible ? "노출" : "미노출"} 상태로 설정했습니다.`,
+    };
+  } catch {
+    return { ok: false, error: "기록의 노출 상태를 변경하지 못했습니다." };
   }
 }

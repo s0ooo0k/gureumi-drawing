@@ -16,7 +16,8 @@ import { GURUMI_SCORE_VERSION, type SimilarityScore } from "./similarity";
 const TABLE_NAME = "gurumi_scores";
 const GIFT_SETTINGS_TABLE = "gurumi_gift_settings";
 const SCORE_COLUMNS = "id,name,score,calibrated,raw,semantic,global_score,density_ratio,overdraw_efficiency,orientation_entropy,loop_monotony,part_scores,created_at,score_version,character_id";
-const ADMIN_SCORE_COLUMNS = `${SCORE_COLUMNS},gift_received` as const;
+const STORED_SCORE_COLUMNS = `${SCORE_COLUMNS},is_visible` as const;
+const ADMIN_SCORE_COLUMNS = `${STORED_SCORE_COLUMNS},gift_received` as const;
 let client: SupabaseClient | null = null;
 
 function getClient() {
@@ -38,6 +39,7 @@ function recordFromRow(row: Record<string, unknown>): ScoreRecord {
     loopMonotony: row.loop_monotony, partScores: row.part_scores,
     createdAt: row.created_at, scoreVersion: row.score_version,
     ...(typeof row.character_id === "string" ? { characterId: row.character_id } : {}),
+    ...(typeof row.is_visible === "boolean" ? { isVisible: row.is_visible } : {}),
   };
   if (!isScoreRecord(candidate)) throw new Error("Stored Gurumi score has an invalid shape.");
   return candidate;
@@ -57,7 +59,8 @@ export async function listGurumiScores(limit = GURUMI_LEADERBOARD_LIMIT) {
     : GURUMI_LEADERBOARD_LIMIT;
   const { data, error } = await rankedScoreRows(SCORE_COLUMNS)
     .limit(safeLimit)
-    .eq("score_version", GURUMI_SCORE_VERSION);
+    .eq("score_version", GURUMI_SCORE_VERSION)
+    .eq("is_visible", true);
   if (error) throw error;
   return (data ?? []).map(recordFromRow);
 }
@@ -95,6 +98,7 @@ async function listGurumiAdminScores() {
     records.push(...page.map((row) => ({
       ...recordFromRow(row),
       giftReceived: row.gift_received === true,
+      isVisible: row.is_visible === true,
     })));
     if (page.length < GURUMI_LEADERBOARD_LIMIT) return records;
   }
@@ -125,8 +129,15 @@ export async function updateGurumiGiftReceived(id: string, giftReceived: boolean
   return Boolean(data);
 }
 
+export async function updateGurumiScoreVisibility(ids: string[], isVisible: boolean) {
+  const { data, error } = await getClient().from(TABLE_NAME).update({ is_visible: isVisible })
+    .in("id", ids).select("id");
+  if (error) throw error;
+  return data?.length ?? 0;
+}
+
 export async function findGurumiScore(id: string) {
-  const { data, error } = await getClient().from(TABLE_NAME).select(SCORE_COLUMNS).eq("id", id).maybeSingle();
+  const { data, error } = await getClient().from(TABLE_NAME).select(STORED_SCORE_COLUMNS).eq("id", id).maybeSingle();
   if (error) throw error;
   return data ? recordFromRow(data) : null;
 }

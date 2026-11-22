@@ -33,6 +33,7 @@ let settingsMissing = false;
 let pagedRecords = false;
 let giftMinimumScore = 60;
 let giftReceived = false;
+let isVisible = true;
 const requests = [];
 const storage = compile("src/lib/gurumi/storage.ts", {
   "server-only": {}, "./records": records, "./similarity": similarity,
@@ -54,18 +55,26 @@ const storage = compile("src/lib/gurumi/storage.ts", {
           return new Response(null, { headers: { "Content-Range": `*/${Number(giftReceived)}` } });
         }
         if (init.method === "PATCH") {
-          if (request.url.searchParams.get("id") === "eq.missing") return json(null);
-          giftReceived = JSON.parse(init.body).gift_received;
+          const idFilter = request.url.searchParams.get("id");
+          if (idFilter === "eq.missing") return json(null);
+          const update = JSON.parse(init.body);
+          if ("is_visible" in update) {
+            if (idFilter !== "in.(test-record)") return json([]);
+            isVisible = update.is_visible;
+            return json([{ id: record.id }]);
+          }
+          giftReceived = update.gift_received;
           return json({ id: record.id });
         }
         const isAdminList = request.url.searchParams.get("select").includes("gift_received");
         if (isAdminList && pagedRecords && request.url.searchParams.get("offset") === "0") {
           return json(Array.from({ length: 1_000 }, (_, index) => ({
-            ...fixture, id: `older-${index}`, score_version: "reference-overlap-v7", gift_received: false,
+            ...fixture, id: `older-${index}`, score_version: "reference-overlap-v7", gift_received: false, is_visible: true,
           })));
         }
-        const rows = isAdminList ? [{ ...fixture, gift_received: giftReceived }] : [fixture];
-        return json(rows);
+        if (request.url.searchParams.has("id")) return json({ ...fixture, is_visible: isVisible });
+        if (isAdminList) return json([{ ...fixture, gift_received: giftReceived, is_visible: isVisible }]);
+        return json(request.url.searchParams.get("is_visible") === "eq.true" && !isVisible ? [] : [fixture]);
       }
       return new Response(JSON.stringify(fail ? { message: "database unavailable", code: "XX000" } : responseData), {
         status: fail ? 500 : 200, headers: { "Content-Type": "application/json" },
@@ -77,6 +86,7 @@ assert.deepEqual(await storage.listGurumiScores(10), [record]);
 assert.equal(requests.at(-1).url.searchParams.get("order"), "score.desc,calibrated.desc,raw.desc,created_at.asc");
 assert.equal(requests.at(-1).url.searchParams.get("limit"), "10");
 assert.equal(requests.at(-1).url.searchParams.get("score_version"), `eq.${similarity.GURUMI_SCORE_VERSION}`);
+assert.equal(requests.at(-1).url.searchParams.get("is_visible"), "eq.true");
 assert.ok(!requests.at(-1).url.searchParams.get("select").includes("gift_received"));
 assert.ok(!requests.at(-1).url.searchParams.get("select").includes("strokes"));
 assert.equal(new Headers(requests.at(-1).headers).get("apikey"), "server-secret");
@@ -105,6 +115,7 @@ assert.ok(new Headers(insert.headers).get("prefer").includes("resolution=ignore-
 assert.deepEqual(JSON.parse(insert.body).part_scores, record.partScores);
 assert.equal(JSON.parse(insert.body).strokes, "encoded");
 assert.equal(JSON.parse(insert.body).character_id, "devops");
+assert.equal(Object.hasOwn(JSON.parse(insert.body), "is_visible"), false);
 responseData = { ...fixture, score: "invalid" };
 await assert.rejects(storage.findGurumiScore(fixture.id), /invalid shape/);
 fail = true;
@@ -112,10 +123,11 @@ await assert.rejects(storage.listGurumiScores(), (error) => error.message === "d
 giftMode = true;
 assert.deepEqual(await storage.loadGurumiLeaderboard(), { leaderboard: [record], giftMinimumScore: 60 });
 assert.deepEqual(await storage.loadGurumiAdminData(), {
-  records: [{ ...record, giftReceived: false }], giftMinimumScore: 60, giftReceivedCount: 0,
+  records: [{ ...record, giftReceived: false, isVisible: true }], giftMinimumScore: 60, giftReceivedCount: 0,
 });
 const adminQuery = requests.findLast(({ url }) => url.searchParams.get("select")?.includes("gift_received"));
 assert.equal(adminQuery.url.searchParams.has("score_version"), false);
+assert.equal(adminQuery.url.searchParams.has("is_visible"), false);
 assert.ok(!adminQuery.url.searchParams.get("select").includes("strokes"));
 pagedRecords = true;
 const allAdminScores = (await storage.loadGurumiAdminData()).records;
@@ -126,9 +138,20 @@ assert.equal(await storage.updateGurumiGiftReceived(record.id, true), true);
 assert.equal(await storage.updateGurumiGiftReceived(record.id, true), true);
 await storage.updateGurumiGiftMinimumScore(72);
 assert.deepEqual(await storage.loadGurumiAdminData(), {
-  records: [{ ...record, giftReceived: true }], giftMinimumScore: 72, giftReceivedCount: 1,
+  records: [{ ...record, giftReceived: true, isVisible: true }], giftMinimumScore: 72, giftReceivedCount: 1,
 });
 assert.deepEqual(await storage.loadGurumiLeaderboard(), { leaderboard: [record], giftMinimumScore: 72 });
+assert.equal(await storage.updateGurumiScoreVisibility([record.id], false), 1);
+assert.equal(requests.at(-1).url.searchParams.get("id"), "in.(test-record)");
+assert.deepEqual(JSON.parse(requests.at(-1).body), { is_visible: false });
+assert.deepEqual(await storage.loadGurumiLeaderboard(), { leaderboard: [], giftMinimumScore: 72 });
+assert.deepEqual(await storage.findGurumiScore(record.id), { ...record, isVisible: false });
+assert.deepEqual(await storage.loadGurumiAdminData(), {
+  records: [{ ...record, giftReceived: true, isVisible: false }], giftMinimumScore: 72, giftReceivedCount: 1,
+});
+assert.equal(await storage.updateGurumiScoreVisibility([record.id], true), 1);
+assert.deepEqual(await storage.loadGurumiLeaderboard(), { leaderboard: [record], giftMinimumScore: 72 });
+assert.equal(await storage.updateGurumiScoreVisibility(["missing"], true), 0);
 assert.equal(await storage.updateGurumiGiftReceived(record.id, false), true);
 assert.equal((await storage.loadGurumiAdminData()).giftReceivedCount, 0);
 assert.equal(await storage.updateGurumiGiftReceived("missing", true), false);
